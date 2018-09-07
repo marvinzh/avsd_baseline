@@ -22,44 +22,51 @@ import scipy.io as sio
 from sklearn import preprocessing
 
 
-# main
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    logging.warn("The value of --feature-dim is ignored. The feature will be saved in its original shape.")
+    # meaningless warning
+    # logging.warn("The value of --feature-dim is ignored. The feature will be saved in its original shape.")
+
     # output immediately
     sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--id_map', default='', type=str)
-    parser.add_argument('--feature_dir', default='i3d_rgb',
+    parser = argparse.ArgumentParser(description="Processing feature file into a signle file for training")
+    parser.add_argument('--idmap',"-m",default='dict_charades_img2vid_mapping.json', type=str,help="image to video name translation mapping file")
+    parser.add_argument('--feature-dir',"-f",default='i3d_rgb',
                         type=str, help="feature folder")
-    parser.add_argument('--output', default='',
-                        type=str, help="output name")
-    parser.add_argument('--skip', default='4',
-                        type=int, help="downsample")
+    parser.add_argument('--output',"-o", default='',
+                        type=str, help="output feature name")
+    parser.add_argument('--skip', default='1',
+                        type=int, help="# of skip frame when downsampling")
     args = parser.parse_args()
-    args.id_map='dict_charades_mapping.json'
-    args.output='charades2text_i3d_rgb_features_stride16.pkl'
-
+    args.output='{}_features_charades.pkl'.format(args.output)
+    
+    # unused variable
     args.offset = 3
+    # unused variable
     args.id_pattern = '/([^/\s]+)/jpg'
-    if args.id_map != '':
-        print("loading image-id mapping", args.id_map)
-        idmap = json.load(open(args.id_map, 'r'))
-        print("done")
-
+    if args.idmap != '':
+        print("loading image-id mapping: {}".format(args.idmap))
+        idmap = json.load(open(args.idmap, 'r'))
+    
+    # unused variable
     idpat = re.compile(args.id_pattern)
+
+    # initial output dict
     output = {}
-    for path in os.listdir(args.feature_dir):
-        vid = path[0:5]
+    for fname in os.listdir(args.feature_dir):
+	# get filename
+        vid = fname[0:5]
         if vid in idmap:
+            print("translate {} into {}".format(vid, idmap[vid]))
             vid = idmap[vid]
         else:
             raise RuntimeError('Unknown Video ID ' + vid)
-        y_feature = np.load(open(args.feature_dir + '/' + path, 'r'))
-        feature_downsample = y_feature[::args.skip]
-        print('ID:', vid, '-- processing', y_feature.shape[0], 'images in', path)
-        output[vid] = feature_downsample
+        y_feature = np.load(open(args.feature_dir + '/' + fname, 'r'))
+        feature_downsampled = y_feature[::args.skip]
+        print("step size: {}, original -> downsampled: {} -> {}, {} ,images in {}".format(args.skip,y_feature.shape[0],feature_downsampled.shape[0],vid,fname))
+        #print('ID:', vid, '-- processing', y_feature.shape[0], 'images in', fname)
+        output[vid] = feature_downsampled
 
-    print("saving features to", args.output)
+    print("saving features to {}".format(args.output))
     pickle.dump(output, open(args.output, 'wb'), 2)
     print("done")
