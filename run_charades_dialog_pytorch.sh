@@ -6,7 +6,9 @@ stage=1
 slurm_queue=clusterNew
 workdir=`pwd`
 datadir=$workdir/data/charades
-ftype="i3d"
+dataset="/gs/hs1/tga-tslab/baiyuu/data/DSTC7-AVSD"
+ftype="i3d" #["vggish","i3d_flow","i3d_rgb"]
+skip_step=1
 #ftype="vggnet i3d c3d mfcc" # resnet"
 in_size="2048" #feat dims: vggnet: 4096, i3d: 2048"
 
@@ -67,13 +69,21 @@ set -o pipefail
 #set -x
 
 # feature extraction
-cnt=0
-for feature in $ftype; do
-    feafile=$datadir/charades2text_${feature}_features.pkl
-    feafiles[cnt]=$feafile
-    cnt=$((cnt + 1))
-done
+if [ $stage -le 1 ]; then
+    echo "start extract features..."
+    cnt=0
+    for feature in $ftype; do
+        python $datadir/prepare_charades.py \
+		--idmap $datadir/dict_charades_img2vid_mapping.json \
+		--feature-dir $dataset/audio_visual_feature/${feature} \
+                --skip $skip_step \
+		--output  ${datadir}/${feature} 
 
+        feafile=$datadir/${feature}_features_charades.pkl
+        feafiles[cnt]=$feafile
+        cnt=$((cnt + 1))
+    done
+fi
 
 # training phase
 mkdir -p $expdir
@@ -145,4 +155,3 @@ if [ $stage -le 4 ]; then
         awk '{if (NR>=26 && NR<33) {print $0}}' $result_eval
     done
 fi
-
