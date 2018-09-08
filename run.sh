@@ -70,7 +70,7 @@ set -o pipefail
 
 # feature extraction
 if [ $stage -le 1 ]; then
-    echo "start extract features..."
+    echo "start extracting features..."
     cnt=0
     for feature in $ftype; do
         python $datadir/prepare_charades.py \
