@@ -7,11 +7,13 @@ Modified baseline for DSTC7 track 3
 
    `pip install -r requirements.txt`
    
-2. install cocotools for python
+2. install pytorch depends on your environment
+
+3. install cocotools for python
 
    `pip install "git+https://github.com/philferriere/cocoapi.git#egg=pycocotools&subdirectory=PythonAPI"`
 
-3. install Stanford NLPCore for SPICE Metric
+4. install Stanford NLPCore for SPICE Metric
 
    `./utils/get_stanford_models.sh`
 
