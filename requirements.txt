@@ -21,7 +21,6 @@ pickleshare==0.7.4
 Pillow==5.2.0
 prompt-toolkit==1.0.15
 ptyprocess==0.6.0
-pycocotools==2.0
 Pygments==2.2.0
 pyparsing==2.2.0
 python-dateutil==2.7.3
