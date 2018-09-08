@@ -8,7 +8,7 @@ workdir=`pwd`
 datadir=$workdir/data/charades
 dataset="/gs/hs1/tga-tslab/baiyuu/data/DSTC7-AVSD"
 ftype="i3d" #["vggish","i3d_flow","i3d_rgb"]
-skip_step=1
+skip_step=8
 #ftype="vggnet i3d c3d mfcc" # resnet"
 in_size="2048" #feat dims: vggnet: 4096, i3d: 2048"
 
@@ -94,9 +94,9 @@ if [ $stage -le 2 ]; then
       --optimizer $optimizer \
       --L2-weight $L2_weight \
       --type $modeltype \
-      --train $datadir/train.json \
-      --valid $datadir/valid.json \
-      --test $datadir/test.json \
+      --train $dataset/text_data/train_set.json \
+      --valid $dataset/text_data/valid_set.json \
+      --test $dataset/text_data/test_set.json \
       --feafile ${feafiles[@]} \
       --capfile $datadir/CAP.json \
       --vocabfile $datadir/worddict.json \

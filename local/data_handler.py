@@ -91,7 +91,13 @@ def make_batch_indices(data, idfile, batchsize=100, max_length=20, test=False, r
     # make mini batches
     if len(reference) == 0:
         idxlist = []
-        for idx in json.load(open(idfile,'r')):
+        
+        # load img2vid mapping file 
+        idmap=json.load(open("local/dict_charades_img2vid_mapping.json"))
+
+        for dialog in json.load(open(idfile,'r'))["dialogs"]:
+            idx=idmap[dialog["image_id"]]
+
             if idx in data['feature']:
                 x_len = len(data['feature'][idx])
                 A_len = 0

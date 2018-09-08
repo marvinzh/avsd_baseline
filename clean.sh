@@ -1,5 +1,5 @@
 rm -rf exp
-rm data/charades/*.pyc
-rm data/charades/*.pkl
-rm local/*.pyc
-rm utils/*.pyc
+rm -f data/charades/*.pyc
+rm -f data/charades/*.pkl
+rm -f local/*.pyc
+rm -f utils/*.pyc
