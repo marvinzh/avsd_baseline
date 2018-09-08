@@ -121,12 +121,12 @@ echo
 # testing phase
 if [ $stage -le 3 ]; then
     gpu_id=0
-    for target in valid test; do
+    for target in valid_set test_set; do
         echo start caption generation for $target set
 	result=${expdir}/generate_${target}_b${beam}_p${penalty}.result
         $test_cmd local/generate_video_dialog_pytorch.py \
           --gpu $gpu_id \
-          --test $datadir/${target}.json \
+          --test $dataset/text_data/${target}.json \
           --feafile ${feafiles[@]} \
           --capfile $datadir/CAP.json \
           --model $expdir/caption_model_best \
@@ -138,13 +138,13 @@ fi
 
 # scoring
 if [ $stage -le 4 ]; then
-    for target in valid test; do
+    for target in valid_set test_set; do
         echo start evaluation for $target set
 	result=${expdir}/generate_${target}_b${beam}_p${penalty}.result
         reference=./data/charades/charades_${target}_ref.json
         if [ ! -f $reference ]; then
             utils/get_annotation_charades.py \
-                  $datadir/CAP.json $datadir/${target}.json $reference
+                  $datadir/CAP.json $dataset/text_data/${target}.json $reference
         fi
         result_json=${result%.*}.json
         result_eval=${result%.*}.eval
