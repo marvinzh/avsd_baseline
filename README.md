@@ -18,7 +18,7 @@ Modified baseline for DSTC7 track 3
    `./utils/get_stanford_models.sh`
 
 ## How to get the data
-Video data: CHARADES for uman action recognition datasets
+Video data: CHARADES for human action recognition datasets
 
 https://allenai.org/plato/charades/
 
@@ -26,7 +26,7 @@ Prototype dataset: 6172(training), 732(validation), 733(test) https://drive.goog
 
 ## How to run the baseline (use prototype dataset)
 1. unzip compressed dataset
-2. modified `$dataset` to the path in step 1
+2. modified `$dataset` in `run.sh` to the path in step 1
 3. kick off training process
 
    `sh run.sh`
