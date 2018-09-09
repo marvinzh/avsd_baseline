@@ -8,7 +8,7 @@ workdir=`pwd`
 datadir=$workdir/data/charades
 dataset="/gs/hs1/tga-tslab/baiyuu/data/DSTC7-AVSD"
 ftype="vggish" #["vggish","i3d_flow","i3d_rgb"]
-skip_step=8
+skip_step=2
 #ftype="vggnet i3d c3d mfcc" # resnet"
 in_size="2048" #feat dims: vggnet: 4096, i3d: 2048"
 
@@ -30,11 +30,10 @@ winshift=20
 # training params
 batch_size=32 #20
 max_length=100
-#optimizer=Adam
 optimizer=AdaDelta
 L2_weight=0.0005
 seed=1
-num_epoch=1 #12
+num_epoch=12
 
 # generator params
 beam=5
