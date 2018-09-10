@@ -142,14 +142,14 @@ if [ $stage -le 4 ]; then
 	result=${expdir}/generate_${target}_b${beam}_p${penalty}.result
         reference=./data/charades/charades_${target}_ref.json
         if [ ! -f $reference ]; then
-            utils/get_annotation_charades.py \
+            python utils/get_annotation_charades.py \
                   $datadir/CAP.json $dataset/text_data/${target}.json $reference
         fi
         result_json=${result%.*}.json
         result_eval=${result%.*}.eval
         echo Evaluating: $result
-        utils/get_hypotheses.py $result $result_json
-        utils/evaluate.py $reference $result_json >& $result_eval
+        python utils/get_hypotheses.py $result $result_json
+        python utils/evaluate.py $reference $result_json >& $result_eval
         echo Wrote details in $result_eval
         awk '{if (NR>=26 && NR<33) {print $0}}' $result_eval
     done
