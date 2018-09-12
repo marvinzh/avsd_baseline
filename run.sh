@@ -30,7 +30,7 @@ winshift=20
 # training params
 batch_size=32 #20
 max_length=100
-optimizer=AdaDelta
+optimizer=AdaDelta #["SGD","Adam","AdaDelta","RMSprop"]
 L2_weight=0.0005
 seed=1
 num_epoch=12
