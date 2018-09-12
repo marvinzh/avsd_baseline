@@ -109,7 +109,7 @@ if __name__ =="__main__":
 
     args = parser.parse_args()
 
-    logging.warn("The argument in_size is ignored. The feature lengths will be decided from the data.");
+    logging.warn("The argument in_size is ignored. The feature lengths will be decided from the data.")
 
     random.seed(args.rand_seed)
     np.random.seed(args.rand_seed)
@@ -117,9 +117,9 @@ if __name__ =="__main__":
 
     # load data
     vocab = {'<unk>': 0, '<sos>': 1, '<eos>': 2, '<no_tag>': 3}
-    data = [];
-    enc_hsizes = [];
-    enc_psizes = [];
+    data = []
+    enc_hsizes = []
+    enc_psizes = []
 
     for a in range(0,1):
         feafile = args.feafile
@@ -127,23 +127,23 @@ if __name__ =="__main__":
 
     for n, feafile in enumerate(args.feafile):
         print('Loading data from ', feafile, ' and ', args.capfile)
-        enc_hsize = args.enc_hsize[n];
-        enc_psize = args.enc_psize[n];
-        feature_data = dh.load(feafile, args.capfile, vocabfile=args.vocabfile, vocab=vocab);
-        feature_data = dh.check_feature_shape(feature_data);
-        n_features = len(feature_data);
-        data.extend(feature_data);
-        enc_hsizes.extend([enc_hsize] * n_features);
-        enc_psizes.extend([enc_psize] * n_features);
+        enc_hsize = args.enc_hsize[n]
+        enc_psize = args.enc_psize[n]
+        feature_data = dh.load(feafile, args.capfile, vocabfile=args.vocabfile, vocab=vocab)
+        feature_data = dh.check_feature_shape(feature_data)
+        n_features = len(feature_data)
+        data.extend(feature_data)
+        enc_hsizes.extend([enc_hsize] * n_features)
+        enc_psizes.extend([enc_psize] * n_features)
 
-    data_sizes = map(lambda d: d["feature"].values()[0].shape[-1], data);
+    data_sizes = map(lambda d: d["feature"].values()[0].shape[-1], data)
 
-    logging.warn("The detectected feature lengths are: {}".format(data_sizes));
+    logging.warn("The detectected feature lengths are: {}".format(data_sizes))
 
     # A workaroung to reduce the lines to change later.
-    args.in_size = data_sizes;
-    args.enc_hsize = enc_hsizes;
-    args.enc_psize = enc_psizes;
+    args.in_size = data_sizes
+    args.enc_hsize = enc_hsizes
+    args.enc_psize = enc_psizes
 
     # Prepare RNN model and load data
     if args.initial_model != '':
@@ -162,8 +162,8 @@ if __name__ =="__main__":
                         att_size=args.att_size,
                         sos=1, eos=2, ignore_label=3)
         else:
-            print("Unknonw model type '{}' is specified.".format(args.type));
-            sys.exit(1);
+            print("Unknonw model type '{}' is specified.".format(args.type))
+            sys.exit(1)
 
     # report data summary
     print ('#vocab =', len(vocab))
