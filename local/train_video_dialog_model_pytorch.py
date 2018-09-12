@@ -4,7 +4,7 @@
 """
 
 import argparse
-import logging;
+import logging
 import math
 import sys
 import time
