@@ -15,9 +15,9 @@ torch.manual_seed(1)
 
 class ARSGMM(nn.Module):
 
-    def __init__(self, in_size, out_size, 
-                 enc_psize=[], enc_hsize=[], dec_psize=100, dec_hsize=100, att_size=100,
+    def __init__(self, in_size, out_size, enc_psize=[], enc_hsize=[], dec_psize=100, dec_hsize=100, att_size=100,
                  matt_size=0, sos=1, eos=2, ignore_label=3, inp = 1024, mid = 1024, sz = 3):
+
         if len(enc_psize)==0:
             enc_psize = in_size
         if len(enc_hsize)==0:
@@ -49,6 +49,7 @@ class ARSGMM(nn.Module):
         self.l1b_x = nn.ModuleList()
         self.l1b_h = nn.ModuleList()
         self.emb_x = nn.ModuleList()
+        
         for m in six.moves.range(len(in_size)):
             self.emb_x.append(nn.Linear(self.in_size[m], self.enc_psize[m]))
             if enc_hsize[m] > 0:
