@@ -54,11 +54,11 @@ def generate_caption(model, data, batch_indices, vocab, dim, stride=1, maxlen=20
                     # The format used in run_youtube_mm.sh.
                     for w in pred:
                         print vocablist[w],
-                    print '( {:f} )'.format(logp[i][n]);
+                    print '( {:f} )'.format(logp[i][n])
                 else:
                     # The format used in run_youtube.sh.
-                    print(vocablist[pred_out[i][n]]);
-                    print('( {:f} )'.format(logp[i]));
+                    print(vocablist[pred_out[i][n]])
+                    print('( {:f} )'.format(logp[i]))
             print 'ElapsedTime:', time.time() - start_time
             print '-----------------------'
             ## print sentence
@@ -105,11 +105,11 @@ if __name__ =="__main__":
 
     # prepare test data
     print 'Making mini batches for test data from', args.test
-    data = [];
+    data = []
 
     for n, feafile in enumerate(args.feafile):
         feature_data = dh.load(feafile, args.capfile, vocab=vocab)
-        data.extend(dh.check_feature_shape(feature_data));
+        data.extend(dh.check_feature_shape(feature_data))
 
     test_indices = [None] * len(args.feafile)
 

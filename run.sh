@@ -88,7 +88,7 @@ fi
 mkdir -p $expdir
 if [ $stage -le 2 ]; then
     echo start training
-    $train_cmd local/train_video_dialog_model_pytorch.py \
+    $train_cmd local/train.py \
       --gpu $gpu_id \
       --optimizer $optimizer \
       --L2-weight $L2_weight \

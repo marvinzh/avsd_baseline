@@ -15,22 +15,31 @@ torch.manual_seed(1)
 
 class ARSGMM(nn.Module):
 
-    def __init__(self, in_size, out_size, 
-                 enc_psize=[], enc_hsize=[], dec_psize=100, dec_hsize=100, att_size=100,
-                 matt_size=0, sos=1, eos=2, ignore_label=3, inp = 1024, mid = 1024, sz = 3):
+    def __init__(self,
+                in_size,
+                out_size,
+                enc_psize=[],
+                enc_hsize=[], 
+                dec_psize=100, 
+                dec_hsize=100,
+                att_size=100,
+                sos=1,
+                eos=2,
+                ignore_label=3,
+                device="cuda:0"
+                ):
+
+        
         if len(enc_psize)==0:
             enc_psize = in_size
         if len(enc_hsize)==0:
             enc_hsize = [0] * len(in_size)
-        if matt_size==0:
-            matt_size = att_size
 
         # make links
         super(ARSGMM, self).__init__()
-        self.inp = inp
-        self.mid = mid
 
         # memorize sizes
+        #  # of input modality
         self.n_inputs = len(in_size)
         self.in_size = in_size
         self.out_size = out_size
@@ -42,20 +51,23 @@ class ARSGMM(nn.Module):
         self.ignore_label = ignore_label
         self.sos = sos
         self.eos = eos
+        self.device= torch.device(device)
 
         # encoder
-        self.l1f_x = nn.ModuleList()
-        self.l1f_h = nn.ModuleList()
-        self.l1b_x = nn.ModuleList()
-        self.l1b_h = nn.ModuleList()
+        # create modulelist for each modality
+        self.rnns=nn.ModuleList()
         self.emb_x = nn.ModuleList()
+
         for m in six.moves.range(len(in_size)):
             self.emb_x.append(nn.Linear(self.in_size[m], self.enc_psize[m]))
             if enc_hsize[m] > 0:
-                self.l1f_x.append(nn.Linear(enc_psize[m], 4 * enc_hsize[m]))
-                self.l1f_h.append(nn.Linear(enc_hsize[m], 4 * enc_hsize[m], bias = False))
-                self.l1b_x.append(nn.Linear(enc_psize[m], 4 * enc_hsize[m]))
-                self.l1b_h.append(nn.Linear(enc_hsize[m], 4 * enc_hsize[m], bias = False))
+                self.rnns.append(
+                    torch.nn.LSTM(
+                        input_size=enc_psize[m],
+                        hidden_size=enc_hsize[m],
+                        num_layers=2,
+                        bidirectional=True,
+                        ).to(self.device))
 
         # attention
         self.atV = nn.ModuleList()
@@ -89,64 +101,39 @@ class ARSGMM(nn.Module):
         self.l5d = nn.Linear(dec_hsize, dec_hsize)
         self.l3d = nn.Linear(4*dec_hsize, out_size)
 
-
-
-
+        
     # Make an initial state
     def make_initial_state(self, hiddensize):
-        return {name: torch.zeros(self.bsize, hiddensize, dtype=torch.float)
-                    for name in ('c1', 'h1')}
+        return {
+            "h1" : torch.zeros(self.bsize, hiddensize, dtype=torch.float),
+            "c1" : torch.zeros(self.bsize, hiddensize, dtype=torch.float),
+            }
+
+    def make_initial_state_new(self, hiddensize):
+        return (
+            # hidden state
+            torch.zeros(self.bsize, hiddensize, dtype=torch.float).to(self.device),
+            # cell state
+            torch.zeros(self.bsize, hiddensize, dtype=torch.float).to(self.device),
+            )
 
     # Encoder functions
-    def embed_x(self, x_data,m):
-        x0 = [torch.from_numpy(x_data[i])
-            for i in six.moves.range(len(x_data))]
+    def embed_x(self, x_data, m):
+        x0 = [torch.from_numpy(x_data[i]) for i in six.moves.range(len(x_data))]
         return self.emb_x[m](torch.cat(x0, 0).cuda().float())
 
-    def forward_one_step(self, x, s, m):
-        x_new = x + self.l1f_h[m](s['h1'].cuda())
-        x_list = torch.split(x_new, self.enc_hsize[m], dim=1)
-        x_list = list(x_list)
-        c1 = F.tanh(x_list[0]) * F.sigmoid(x_list[1]) + s['c1'].cuda() * F.sigmoid(x_list[2])
-        h1 = F.tanh(c1) * F.sigmoid(x_list[3])
-        return {'c1': c1, 'h1': h1}
-
-    def backward_one_step(self, x, s, m):
-        x_new = x + self.l1b_h[m](s['h1'].cuda())
-        x_list = torch.split(x_new, self.enc_hsize[m], dim=1)
-        x_list = list(x_list)
-        c1 = F.tanh(x_list[0]) * F.sigmoid(x_list[1]) + s['c1'].cuda() * F.sigmoid(x_list[2])
-        h1 = F.tanh(c1) * F.sigmoid(x_list[3])
-        return {'c1': c1, 'h1': h1}
-
     # Encoder main
-
     def encode(self, x):
         h1 = [None] * self.n_inputs
+        #  loop each modality
         for m in six.moves.range(self.n_inputs):
-            # self.emb_x=self.__dict__['emb_x%d' % m]
             if self.enc_hsize[m] > 0:
-                # embedding
-                seqlen = len(x[m])
                 h0 = self.embed_x(x[m],m)
-                # forward path
-                aa=self.l1f_x[m](F.dropout(h0, training=self.train))
-                fh1 = torch.split(self.l1f_x[m](F.dropout(h0, training=self.train)), self.bsize, dim=0)
-                fstate = self.make_initial_state(self.enc_hsize[m])
-                h1f = []
-                for h in fh1:
-                    fstate = self.forward_one_step(h, fstate, m)
-                    h1f.append(fstate['h1'])
-                # backward path
-                bh1 = torch.split(self.l1b_x[m](F.dropout(h0, training=self.train)), self.bsize, dim=0)
-                bstate = self.make_initial_state(self.enc_hsize[m])
-                h1b = []
-                for h in reversed(bh1):
-                    bstate = self.backward_one_step(h, bstate, m)
-                    h1b.insert(0, bstate['h1'])
-                # concatenation
-                h1[m] = torch.cat([torch.cat((f,b), 1)
-                              for f,b in six.moves.zip(h1f,h1b)], 0)
+                
+                h0_droped = torch.stack(torch.split(F.dropout(h0, training=self.train), self.bsize, dim=0)) 
+                o, (h,c) = self.rnns[m](h0_droped)
+                h1[m]=o.reshape(-1,self.enc_hsize[m]*2)
+
             else:
                 # embedding only
                 h1[m] = torch.tanh(self.embed_x(x[m],m))
@@ -179,6 +166,7 @@ class ARSGMM(nn.Module):
                 g = self.lgd[m](c[m])
             else:
                 g += self.lgd[m](c[m])
+ 
         g = torch.cat((g, g1, g2, g3), 1)
         return F.tanh(g)
 
@@ -222,6 +210,7 @@ class ARSGMM(nn.Module):
     def propagate(self, x, Q, A, predicted_context=False, train=True):
         self.bsize = x[0][0].shape[0]
         self.train = train
+        
         loss = torch.zeros(1, dtype=torch.float).cuda()
         # encoder
         h1 = self.encode(x)
