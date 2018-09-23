@@ -122,26 +122,6 @@ class ARSGMM(nn.Module):
         x0 = [torch.from_numpy(x_data[i]) for i in six.moves.range(len(x_data))]
         return self.emb_x[m](torch.cat(x0, 0).cuda().float())
 
-    def forward_one_step(self, x, s, m):
-        
-        h,c=self.f_lstms[m](x,s)
-        return (h,c)
-
-
-    def backward_one_step(self, x, s, m):
-        '''backward path for modality rnn encoder
-        
-        Arguments:
-            x {} -- input
-            s {[type]} -- rnn state
-            m {[type]} -- modality index
-        
-        Returns:
-            [dict] -- rnn state for next step
-        '''
-        h,c=self.b_lstms[m](x,s)
-        return (h,c)
-
     # Encoder main
     def encode(self, x):
         h1 = [None] * self.n_inputs
