@@ -94,7 +94,7 @@ class ARSGMM(nn.Module):
         self.l1d_y_qq = nn.Linear(dec_psize, 4 * dec_hsize)
         self.l1d_h = nn.Linear(dec_hsize, 4 * dec_hsize, bias=False)
         self.l1d_h_q = nn.Linear(dec_hsize, 4 * dec_hsize, bias=False)
-	    self.l1d_h_a = nn.Linear(dec_hsize, 4 * dec_hsize, bias=False)
+	self.l1d_h_a = nn.Linear(dec_hsize, 4 * dec_hsize, bias=False)
         self.l1d_h_qq = nn.Linear(dec_hsize, 4 * dec_hsize, bias=False)
         self.l2d = nn.Linear(dec_hsize, dec_hsize)
         self.l4d = nn.Linear(dec_hsize, dec_hsize)
@@ -150,14 +150,8 @@ class ARSGMM(nn.Module):
             if self.enc_hsize[m] > 0:
                 h0 = self.embed_x(x[m],m)
                 
-                h0_droped= torch.split(
-                    torch.dropout(h0, training=self.train),
-                    self.bsize,
-                    dim=0
-                )
-
-                o, (h,c) = self.rnns(h0_droped)
-                                
+                h0_droped = torch.stack(torch.split(F.dropout(h0, training=self.train), self.bsize, dim=0)) 
+                o, (h,c) = self.rnns[m](h0_droped)
                 h1[m]=o.reshape(-1,self.enc_hsize[m]*2)
 
             else:
@@ -183,8 +177,8 @@ class ARSGMM(nn.Module):
     # Simple modality fusion
     def simple_modality_fusion(self, c, s, s_qa, s_q):
         g1 = self.l2d(s)
-	    g2 = self.l4d(s_qa)
-	    g3 = self.l5d(s_q)
+	g2 = self.l4d(s_qa)
+	g3 = self.l5d(s_q)
         # for m in six.moves.range(self.n_inputs):
         #     g += self.lgd[m](F.dropout(c[m], training=self.train))
         for m in six.moves.range(self.n_inputs):
