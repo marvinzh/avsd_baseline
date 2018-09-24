@@ -31,12 +31,8 @@ class MMEncoder(nn.Module):
         self.att_size = att_size
         self.state_size = state_size
         # encoder
-        # self.l1f_x = nn.ModuleList()
-        # self.l1f_h = nn.ModuleList()
         self.f_lstms = nn.ModuleList()
         self.b_lstms = nn.ModuleList()
-        # self.l1b_x = nn.ModuleList()
-        # self.l1b_h = nn.ModuleList()
         self.emb_x = nn.ModuleList()
         self.device= torch.device(device)
         for m in six.moves.range(len(in_size)):
@@ -44,10 +40,6 @@ class MMEncoder(nn.Module):
             if enc_hsize[m] > 0:
                 self.f_lstms.append(nn.LSTMCell(enc_psize[m], enc_hsize[m]).to(self.device))
                 self.b_lstms.append(nn.LSTMCell(enc_psize[m], enc_hsize[m]).to(self.device))
-                # self.l1f_x.append(nn.Linear(enc_psize[m], 4 * enc_hsize[m]))
-                # self.l1f_h.append(nn.Linear(enc_hsize[m], 4 * enc_hsize[m], bias=False))
-                # self.l1b_x.append(nn.Linear(enc_psize[m], 4 * enc_hsize[m]))
-                # self.l1b_h.append(nn.Linear(enc_hsize[m], 4 * enc_hsize[m], bias=False))
         # temporal attention
         self.atV = nn.ModuleList()
         self.atW = nn.ModuleList()
