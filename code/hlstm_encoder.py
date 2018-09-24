@@ -60,6 +60,7 @@ class HLSTMEncoder(nn.Module):
                 packed_wj = nn.utils.rnn.pack_padded_sequence(padded_wj, list(cc.data), batch_first=True)
             else:
                 xl = [ self.embed(xs[l][0]) ]
+
             if hasattr(self, 'independent') and self.independent:
                 ys, (why, wcy) = self.wlstm(packed_wj)
             else:
@@ -67,12 +68,13 @@ class HLSTMEncoder(nn.Module):
                     ys, (why, wcy) = self.wlstm(packed_wj)
                 else:
                     ys, (why, wcy) = self.wlstm(packed_wj, (why, wcy))
+            
             ys = nn.utils.rnn.pad_packed_sequence(ys, batch_first=True)[0]
+
             if len(xs[l]) > 1:
                 idx = (cc - 1).view(-1, 1).expand(ys.size(0), ys.size(2)).unsqueeze(1)
                 idx = torch.tensor(idx, dtype=torch.long)
                 decoded = ys.gather(1, idx.cuda()).squeeze()
-
                 # restore the sorting
                 cc2, perm_index2 = torch.sort(perm_index, 0)
                 odx = perm_index2.view(-1, 1).expand(ys.size(0), ys.size(-1))
@@ -85,11 +87,11 @@ class HLSTMEncoder(nn.Module):
         # sentence level
         sxs = torch.stack(sx, dim=0)
         sxs = sxs.permute(1,0,2)
-        # sxl = [sxs[i] for i in six.moves.range(len(sxs))]
+        
         if s is not None:
-            sys, (shy, scy) = self.slstm( sxs, (s[0], s[1]))
+            sys, (shy, scy) = self.slstm(sxs, (s[0], s[1]))
         else:
-            sys, (shy, scy) = self.slstm( sxs )
+            sys, (shy, scy) = self.slstm(sxs)
 
         return shy
 

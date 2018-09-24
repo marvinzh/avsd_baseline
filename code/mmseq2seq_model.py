@@ -48,6 +48,7 @@ class MMSeq2SeqModel(nn.Module):
         eh = self.history_encoder(None, hx)
         # concatenate encodings
         es = torch.cat((ei, ems, eh[-1]), dim=1)
+        
         if hasattr(self.response_decoder, 'context_to_state') \
             and self.response_decoder.context_to_state==True:
             ds, dy = self.response_decoder(es, None, y)

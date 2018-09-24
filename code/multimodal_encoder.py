@@ -14,7 +14,7 @@ import torch.nn.functional as F
 class MMEncoder(nn.Module):
 
     def __init__(self, in_size, out_size, enc_psize=[], enc_hsize=[], att_size=100,
-                 state_size=100):
+                 state_size=100, device="cuda:0"):
         if len(enc_psize)==0:
             enc_psize = in_size
         if len(enc_hsize)==0:
@@ -31,18 +31,23 @@ class MMEncoder(nn.Module):
         self.att_size = att_size
         self.state_size = state_size
         # encoder
-        self.l1f_x = nn.ModuleList()
-        self.l1f_h = nn.ModuleList()
-        self.l1b_x = nn.ModuleList()
-        self.l1b_h = nn.ModuleList()
+        # self.l1f_x = nn.ModuleList()
+        # self.l1f_h = nn.ModuleList()
+        self.f_lstms = nn.ModuleList()
+        self.b_lstms = nn.ModuleList()
+        # self.l1b_x = nn.ModuleList()
+        # self.l1b_h = nn.ModuleList()
         self.emb_x = nn.ModuleList()
+        self.device= torch.device(device)
         for m in six.moves.range(len(in_size)):
             self.emb_x.append(nn.Linear(self.in_size[m], self.enc_psize[m]))
             if enc_hsize[m] > 0:
-                self.l1f_x.append(nn.Linear(enc_psize[m], 4 * enc_hsize[m]))
-                self.l1f_h.append(nn.Linear(enc_hsize[m], 4 * enc_hsize[m], bias=False))
-                self.l1b_x.append(nn.Linear(enc_psize[m], 4 * enc_hsize[m]))
-                self.l1b_h.append(nn.Linear(enc_hsize[m], 4 * enc_hsize[m], bias=False))
+                self.f_lstms.append(nn.LSTMCell(enc_psize[m], enc_hsize[m]).to(self.device))
+                self.b_lstms.append(nn.LSTMCell(enc_psize[m], enc_hsize[m]).to(self.device))
+                # self.l1f_x.append(nn.Linear(enc_psize[m], 4 * enc_hsize[m]))
+                # self.l1f_h.append(nn.Linear(enc_hsize[m], 4 * enc_hsize[m], bias=False))
+                # self.l1b_x.append(nn.Linear(enc_psize[m], 4 * enc_hsize[m]))
+                # self.l1b_h.append(nn.Linear(enc_hsize[m], 4 * enc_hsize[m], bias=False))
         # temporal attention
         self.atV = nn.ModuleList()
         self.atW = nn.ModuleList()
@@ -60,6 +65,15 @@ class MMEncoder(nn.Module):
         return {name: torch.zeros(self.bsize, hiddensize, dtype=torch.float)
                 for name in ('c1', 'h1')}
 
+    # Make an initial state
+    def make_initial_state_new(self, hiddensize):
+        return (
+            torch.zeros(self.bsize, hiddensize, dtype=torch.float).to(self.device),
+            torch.zeros(self.bsize, hiddensize, dtype=torch.float).to(self.device),
+        )
+        # return {name: torch.zeros(self.bsize, hiddensize, dtype=torch.float)
+                # for name in ('c1', 'h1')}
+
     # Encoder functions
     def embed_x(self, x_data, m):
         x0 = [x_data[i]
@@ -67,20 +81,24 @@ class MMEncoder(nn.Module):
         return self.emb_x[m](torch.cat(x0, 0).cuda().float())
 
     def forward_one_step(self, x, s, m):
-        x_new = x + self.l1f_h[m](s['h1'].cuda())
-        x_list = torch.split(x_new, self.enc_hsize[m], dim=1)
-        x_list = list(x_list)
-        c1 = torch.tanh(x_list[0]) * F.sigmoid(x_list[1]) + s['c1'].cuda() * F.sigmoid(x_list[2])
-        h1 = torch.tanh(c1) * F.sigmoid(x_list[3])
-        return {'c1': c1, 'h1': h1}
+        # x_new = x + self.l1f_h[m](s['h1'].cuda())
+        # x_list = torch.split(x_new, self.enc_hsize[m], dim=1)
+        # x_list = list(x_list)
+        # c1 = torch.tanh(x_list[0]) * F.sigmoid(x_list[1]) + s['c1'].cuda() * F.sigmoid(x_list[2])
+        # h1 = torch.tanh(c1) * F.sigmoid(x_list[3])
+        h,c=self.f_lstms[m](x,s)
+        return (h, c)
+        # return {'c1': c1, 'h1': h1}
 
     def backward_one_step(self, x, s, m):
-        x_new = x + self.l1b_h[m](s['h1'].cuda())
-        x_list = torch.split(x_new, self.enc_hsize[m], dim=1)
-        x_list = list(x_list)
-        c1 = torch.tanh(x_list[0]) * F.sigmoid(x_list[1]) + s['c1'].cuda() * F.sigmoid(x_list[2])
-        h1 = torch.tanh(c1) * F.sigmoid(x_list[3])
-        return {'c1': c1, 'h1': h1}
+        # x_new = x + self.l1b_h[m](s['h1'].cuda())
+        # x_list = torch.split(x_new, self.enc_hsize[m], dim=1)
+        # x_list = list(x_list)
+        # c1 = torch.tanh(x_list[0]) * F.sigmoid(x_list[1]) + s['c1'].cuda() * F.sigmoid(x_list[2])
+        # h1 = torch.tanh(c1) * F.sigmoid(x_list[3])
+        # return {'c1': c1, 'h1': h1}
+        h, c = self.b_lstms[m](x,s)
+        return (h, c)
 
     # Encoder main
     def encode(self, x):
@@ -92,20 +110,27 @@ class MMEncoder(nn.Module):
                 seqlen = len(x[m])
                 h0 = self.embed_x(x[m], m)
                 # forward path
-                aa = self.l1f_x[m](F.dropout(h0, training=self.train))
-                fh1 = torch.split(self.l1f_x[m](F.dropout(h0, training=self.train)), self.bsize, dim=0)
-                fstate = self.make_initial_state(self.enc_hsize[m])
+                # aa = self.l1f_x[m](F.dropout(h0, training=self.train))
+                fh1 = torch.split(
+                        F.dropout(h0, training=self.train), 
+                        self.bsize, dim=0)
+                fstate = self.make_initial_state_new(self.enc_hsize[m])
                 h1f = []
                 for h in fh1:
                     fstate = self.forward_one_step(h, fstate, m)
-                    h1f.append(fstate['h1'])
+                    h1f.append(fstate[0])
+
                 # backward path
-                bh1 = torch.split(self.l1b_x[m](F.dropout(h0, training=self.train)), self.bsize, dim=0)
-                bstate = self.make_initial_state(self.enc_hsize[m])
+                bh1 = torch.split(
+                        F.dropout(h0, training=self.train),
+                        self.bsize, dim=0)
+
+                bstate = self.make_initial_state_new(self.enc_hsize[m])
                 h1b = []
                 for h in reversed(bh1):
                     bstate = self.backward_one_step(h, bstate, m)
-                    h1b.insert(0, bstate['h1'])
+                    # h1b.insert(0, bstate['h1'])
+                    h1b.insert(0, bstate[0])
                 # concatenation
                 h1[m] = torch.cat([torch.cat((f, b), 1)
                                    for f, b in six.moves.zip(h1f, h1b)], 0)

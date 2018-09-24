@@ -176,18 +176,22 @@ if __name__ =="__main__":
                          vocab=vocab, dictmap=dictmap)
 
     feature_dims = dh.feature_shape(train_data)
-    logging.info("Detected feature dims: {}".format(feature_dims));
+    logging.info("Detected feature dims: {}".format(feature_dims))
 
     # Prepare RNN model and load data
     model = MMSeq2SeqModel(
+                # multi-modality encoder
                 MMEncoder(feature_dims, args.mout_size, enc_psize=args.enc_psize,
                           enc_hsize=args.enc_hsize, att_size=args.att_size,
                           state_size=args.in_enc_hsize),
+                # history encoder 
                 HLSTMEncoder(args.hist_enc_layers[0], args.hist_enc_layers[1],
                           len(vocab), args.hist_out_size, args.embed_size,
                           args.hist_enc_hsize),
+                # input encoder
                 LSTMEncoder(args.in_enc_layers, len(vocab), args.in_enc_hsize,
                           args.embed_size),
+                # decoder
                 HLSTMDecoder(args.dec_layers, len(vocab), len(vocab), args.embed_size,
                           args.mout_size + args.hist_out_size + args.in_enc_hsize,
                           args.dec_hsize, args.dec_psize,

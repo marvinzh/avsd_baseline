@@ -23,7 +23,12 @@ class LSTMEncoder(nn.Module):
         """
         super(LSTMEncoder, self).__init__()
         self.embed =nn.Embedding(in_size, embed_size)
-        self.lstm = nn.LSTM(embed_size,out_size,n_layers,dropout,batch_first=True)
+        self.lstm = nn.LSTM(embed_size,
+                            out_size,
+                            n_layers,
+                            dropout,
+                            batch_first=True
+                            )
 
 
 
@@ -41,7 +46,6 @@ class LSTMEncoder(nn.Module):
         """
         if len(xs) != 0:
             sections = np.array([len(x) for x in xs], dtype=np.int32)
-            # aa = self.embed(torch.tensor(xs[0][0],dtype=torch.long).cuda())
             aa = torch.cat(xs, 0)
             bb = self.embed(torch.tensor(aa, dtype=torch.long).cuda())
             cc = sections.tolist()
@@ -54,38 +58,14 @@ class LSTMEncoder(nn.Module):
             sort_wj.append([wj[i] for i in perm_index])
             padded_wj = nn.utils.rnn.pad_sequence(sort_wj[0], batch_first=True)
             packed_wj = nn.utils.rnn.pack_padded_sequence(padded_wj, list(cc.data), batch_first=True)
-            # ys,(hy,cy) = self.lstm(packed_wj)
-            # ys = nn.utils.rnn.pad_packed_sequence(ys, batch_first=True)[0]
-
-
-            # restore the sorting
-            # odx = perm_index.view(-1, 1).unsqueeze(1).expand(ys.size(0), ys.size(1), ys.size(2))
-            # ys2 = ys.gather(0, odx.cuda())
-
-            # idx = (cc - 1).view(-1, 1).expand(ys.size(0), ys.size(2)).unsqueeze(1)
-            # idx = torch.tensor(idx, dtype=torch.long)
-            # decoded = ys.gather(1, idx.cuda()).squeeze()
-            #
-            # # restore the sorting
-            # odx = perm_index.view(-1, 1).expand(ys.size(0), ys.size(-1))
-            # decoded = decoded.gather(0, odx.cuda())
-
-
-            # a1=ys2.cpu()
-            # a1=a1.data.numpy()
-            # a2=ys.cpu()
-            # a2=a2.data.numpy()
-            # a3=perm_index.cpu()
-            # a3=a3.data.numpy()
-            # a4=decoded.cpu()
-            # a4=a4.data.numpy()
-            # sio.savemat('np_vector2.mat', {'a1':a1,'a2':a2,'a3':a3,'a4':a4})
         else:
-            hx = [ self.embed(xs[0]) ]
+            hx = [self.embed(xs[0])]
+
         if s is not None:
             ys, (hy,cy) = self.lstm(packed_wj,(s[0], s[1]))
         else:
             ys, (hy,cy) = self.lstm(packed_wj)
+        
         #resorting
         ys = nn.utils.rnn.pad_packed_sequence(ys, batch_first=True)[0]
         if len(xs)>1:
