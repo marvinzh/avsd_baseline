@@ -62,17 +62,12 @@ class MMEncoder(nn.Module):
 
     # Make an initial state
     def make_initial_state(self, hiddensize):
-        return {name: torch.zeros(self.bsize, hiddensize, dtype=torch.float)
-                for name in ('c1', 'h1')}
-
-    # Make an initial state
-    def make_initial_state_new(self, hiddensize):
         return (
+            # initial hidden state
             torch.zeros(self.bsize, hiddensize, dtype=torch.float).to(self.device),
+            # initial cell state
             torch.zeros(self.bsize, hiddensize, dtype=torch.float).to(self.device),
         )
-        # return {name: torch.zeros(self.bsize, hiddensize, dtype=torch.float)
-                # for name in ('c1', 'h1')}
 
     # Encoder functions
     def embed_x(self, x_data, m):
@@ -80,44 +75,22 @@ class MMEncoder(nn.Module):
               for i in six.moves.range(len(x_data))]
         return self.emb_x[m](torch.cat(x0, 0).cuda().float())
 
-    def forward_one_step(self, x, s, m):
-        # x_new = x + self.l1f_h[m](s['h1'].cuda())
-        # x_list = torch.split(x_new, self.enc_hsize[m], dim=1)
-        # x_list = list(x_list)
-        # c1 = torch.tanh(x_list[0]) * F.sigmoid(x_list[1]) + s['c1'].cuda() * F.sigmoid(x_list[2])
-        # h1 = torch.tanh(c1) * F.sigmoid(x_list[3])
-        h,c=self.f_lstms[m](x,s)
-        return (h, c)
-        # return {'c1': c1, 'h1': h1}
-
-    def backward_one_step(self, x, s, m):
-        # x_new = x + self.l1b_h[m](s['h1'].cuda())
-        # x_list = torch.split(x_new, self.enc_hsize[m], dim=1)
-        # x_list = list(x_list)
-        # c1 = torch.tanh(x_list[0]) * F.sigmoid(x_list[1]) + s['c1'].cuda() * F.sigmoid(x_list[2])
-        # h1 = torch.tanh(c1) * F.sigmoid(x_list[3])
-        # return {'c1': c1, 'h1': h1}
-        h, c = self.b_lstms[m](x,s)
-        return (h, c)
-
     # Encoder main
     def encode(self, x):
         h1 = [None] * self.n_inputs
         for m in six.moves.range(self.n_inputs):
-            # self.emb_x=self.__dict__['emb_x%d' % m]
             if self.enc_hsize[m] > 0:
                 # embedding
                 seqlen = len(x[m])
                 h0 = self.embed_x(x[m], m)
                 # forward path
-                # aa = self.l1f_x[m](F.dropout(h0, training=self.train))
                 fh1 = torch.split(
                         F.dropout(h0, training=self.train), 
                         self.bsize, dim=0)
                 fstate = self.make_initial_state_new(self.enc_hsize[m])
                 h1f = []
                 for h in fh1:
-                    fstate = self.forward_one_step(h, fstate, m)
+                    fstate = self.f_lstms[m](h,fstate)
                     h1f.append(fstate[0])
 
                 # backward path
@@ -128,9 +101,9 @@ class MMEncoder(nn.Module):
                 bstate = self.make_initial_state_new(self.enc_hsize[m])
                 h1b = []
                 for h in reversed(bh1):
-                    bstate = self.backward_one_step(h, bstate, m)
-                    # h1b.insert(0, bstate['h1'])
+                    bstate = self.b_lstms[m](h, bstate)
                     h1b.insert(0, bstate[0])
+
                 # concatenation
                 h1[m] = torch.cat([torch.cat((f, b), 1)
                                    for f, b in six.moves.zip(h1f, h1b)], 0)
@@ -174,10 +147,13 @@ class MMEncoder(nn.Module):
     # forward propagation routine
     def __call__(self, s, x, train=True):
         self.bsize = x[0][0].shape[0]
+        
         h1 = self.encode(x)
         vh1 = [self.atV[m](h1[m]) for m in six.moves.range(self.n_inputs)]
+
         # attention
         c = self.attention(h1, vh1, s)
         g = self.simple_modality_fusion(c, s)
+        
         return torch.tanh(g)
 
