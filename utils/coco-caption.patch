@@ -1,5 +1,18 @@
---- utils/coco-caption/pycocoevalcap/tokenizer/ptbtokenizer.py	2017-01-12 11:35:13.793667005 -0500
-+++ utils/coco-caption/pycocoevalcap/tokenizer/ptbtokenizer.py.fixed	2017-01-12 11:30:46.369659965 -0500
+--- utils/coco-caption/pycocoevalcap/eval.py	2018-09-22 01:10:32.538061998 -0400
++++ utils/coco-caption.changed/pycocoevalcap/eval.py	2018-09-22 01:16:17.829033753 -0400
+@@ -40,8 +40,8 @@
+             (Bleu(4), ["Bleu_1", "Bleu_2", "Bleu_3", "Bleu_4"]),
+             (Meteor(),"METEOR"),
+             (Rouge(), "ROUGE_L"),
+-            (Cider(), "CIDEr"),
+-            (Spice(), "SPICE")
++            (Cider(), "CIDEr")#,
++            #(Spice(), "SPICE")
+         ]
+ 
+         # =================================================
+--- utils/coco-caption/pycocoevalcap/tokenizer/ptbtokenizer.py	2018-09-22 01:10:32.874060999 -0400
++++ utils/coco-caption.changed/pycocoevalcap/tokenizer/ptbtokenizer.py	2018-09-22 00:59:16.388078385 -0400
 @@ -34,7 +34,7 @@
          # ======================================================
          final_tokenized_captions_for_image = {}
