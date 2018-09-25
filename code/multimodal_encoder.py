@@ -95,19 +95,20 @@ class MMEncoder(nn.Module):
 
                 hs, cs= self.make_initial_state(self.enc_hsize[m])
                 # extend initial hidden state and cell state for stacked LSTM
-                hs = torch.stack([hs] * len(self.f_lstms[m]))
-                cs = torch.stack([cs] * len(self.f_lstms[m])) 
+                hs = [[hs]] * len(self.b_lstms[m])
+                cs = [[cs]] * len(self.b_lstms[m])
                 h1f = []
 
                 for h in fh1:
                     for level in range(len(self.f_lstms[m])):
                         if level==0:
-                            hs[level],cs[level] = self.f_lstms[m][level](h, (hs[level],cs[level]))
+                            hs_temp, cs_temp = self.f_lstms[m][level](h, (hs[level],cs[level]))
                         else:
-                            hs[level],cs[level] = self.f_lstms[m][level](hs[level-1], (hs[level],cs[level]))
-                    
+                            hs_temp, cs_temp = self.f_lstms[m][level](hs[level-1], (hs[level],cs[level]))
+                        hs[level].append(hs_temp)
+                        cs[level].append(cs_temp)
                     # fstate = self.f_lstms[m](h,fstate)
-                    h1f.append(hs[-1])
+                    h1f.append(hs[-1][-1])
 
                 # backward path
                 bh1 = torch.split(
@@ -116,18 +117,20 @@ class MMEncoder(nn.Module):
 
                 hs, cs = self.make_initial_state(self.enc_hsize[m])
                  # extend initial hidden state and cell state for stacked LSTM
-                hs = torch.stack([hs] * len(self.b_lstms[m]))
-                cs = torch.stack([cs] * len(self.b_lstms[m])) 
+                hs = [[hs]] * len(self.b_lstms[m])
+                cs = [[cs]] * len(self.b_lstms[m])
                 h1b = []
                 for h in reversed(bh1):
                     for level in range(len(self.b_lstms[m])):
                         if level == 0:
-                            hs[level], cs[level] = self.b_lstms[m][level](h, (hs[level], cs[level]))
+                            hs_temp, cs_temp = self.b_lstms[m][level](h, (hs[level], cs[level]))
                         else:
-                            hs[level], cs[level] = self.b_lstms[m][level](hs[level-1], (hs[level], cs[level]))
+                            hs_temp, cs_temp = self.b_lstms[m][level](hs[level-1], (hs[level], cs[level]))
+                        hs[level].append(hs_temp)
+                        cs[level].append(cs_temp)
 
                     # bstate = self.b_lstms[m](h, bstate)
-                    h1b.insert(0, hs[-1])
+                    h1b.insert(0, hs[-1][-1])
 
                 # concatenation
                 h1[m] = torch.cat([torch.cat((f, b), 1)
