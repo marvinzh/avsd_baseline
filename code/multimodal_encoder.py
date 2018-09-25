@@ -102,9 +102,15 @@ class MMEncoder(nn.Module):
                 for h in fh1:
                     for level in range(len(self.f_lstms[m])):
                         if level==0:
-                            hs_temp, cs_temp = self.f_lstms[m][level](h, (hs[level],cs[level]))
+                            hs_temp, cs_temp = self.f_lstms[m][level](
+                                h, 
+                                (hs[level][-1], cs[level][-1])
+                                )
                         else:
-                            hs_temp, cs_temp = self.f_lstms[m][level](hs[level-1], (hs[level],cs[level]))
+                            hs_temp, cs_temp = self.f_lstms[m][level](
+                                hs[level-1][-1],
+                                (hs[level][-1],cs[level][-1])
+                                )
                         hs[level].append(hs_temp)
                         cs[level].append(cs_temp)
                     # fstate = self.f_lstms[m](h,fstate)
@@ -123,9 +129,15 @@ class MMEncoder(nn.Module):
                 for h in reversed(bh1):
                     for level in range(len(self.b_lstms[m])):
                         if level == 0:
-                            hs_temp, cs_temp = self.b_lstms[m][level](h, (hs[level], cs[level]))
+                            hs_temp, cs_temp = self.b_lstms[m][level](
+                                h,
+                                (hs[level][-1], cs[level][-1])
+                                )
                         else:
-                            hs_temp, cs_temp = self.b_lstms[m][level](hs[level-1], (hs[level], cs[level]))
+                            hs_temp, cs_temp = self.b_lstms[m][level](
+                                hs[level-1][-1],
+                                (hs[level][-1], cs[level][-1])
+                                )
                         hs[level].append(hs_temp)
                         cs[level].append(cs_temp)
 
