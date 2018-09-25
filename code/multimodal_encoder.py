@@ -14,7 +14,7 @@ import torch.nn.functional as F
 class MMEncoder(nn.Module):
 
     def __init__(self, in_size, out_size, enc_psize=[], enc_hsize=[], att_size=100,
-                 state_size=100, device="cuda:0"):
+                 state_size=100, device="cuda:0", enc_layers=[2,2]):
         if len(enc_psize)==0:
             enc_psize = in_size
         if len(enc_hsize)==0:
@@ -28,6 +28,7 @@ class MMEncoder(nn.Module):
         self.out_size = out_size
         self.enc_psize = enc_psize
         self.enc_hsize = enc_hsize
+        self.enc_layers = enc_layers
         self.att_size = att_size
         self.state_size = state_size
         # encoder
@@ -37,9 +38,21 @@ class MMEncoder(nn.Module):
         self.device= torch.device(device)
         for m in six.moves.range(len(in_size)):
             self.emb_x.append(nn.Linear(self.in_size[m], self.enc_psize[m]))
+
             if enc_hsize[m] > 0:
-                self.f_lstms.append(nn.LSTMCell(enc_psize[m], enc_hsize[m]).to(self.device))
-                self.b_lstms.append(nn.LSTMCell(enc_psize[m], enc_hsize[m]).to(self.device))
+                # create module for stacked bi-LSTM
+                self.f_lstms.append(torch.nn.ModuleList())
+                self.b_lstms.append(torch.nn.ModuleList())
+                # create stacked bi-LSTM for current modality m
+                for layer in range(self.enc_layers[m]):
+                    if layer == 0:
+                        self.f_lstms[m].append(nn.LSTMCell(enc_psize[m], enc_hsize[m]).to(self.device))
+                        self.b_lstms[m].append(nn.LSTMCell(enc_psize[m], enc_hsize[m]).to(self.device))
+                    else:
+                        self.f_lstms[m].append(nn.LSTMCell(enc_hsize[m], enc_hsize[m]).to(self.device))
+                        self.b_lstms[m].append(nn.LSTMCell(enc_hsize[m], enc_hsize[m]).to(self.device))
+
+                # self.b_lstms.append(nn.LSTMCell(enc_psize[m], enc_hsize[m]).to(self.device))
         # temporal attention
         self.atV = nn.ModuleList()
         self.atW = nn.ModuleList()
@@ -79,22 +92,42 @@ class MMEncoder(nn.Module):
                 fh1 = torch.split(
                         F.dropout(h0, training=self.train), 
                         self.bsize, dim=0)
-                fstate = self.make_initial_state_new(self.enc_hsize[m])
+
+                hs, cs= self.make_initial_state(self.enc_hsize[m])
+                # extend initial hidden state and cell state for stacked LSTM
+                hs = torch.stack([hs] * len(self.f_lstms[m]))
+                cs = torch.stack([cs] * len(self.f_lstms[m])) 
                 h1f = []
+
                 for h in fh1:
-                    fstate = self.f_lstms[m](h,fstate)
-                    h1f.append(fstate[0])
+                    for level in range(len(self.f_lstms[m])):
+                        if level==0:
+                            hs[level],cs[level] = self.f_lstms[m][level](h, (hs[level],cs[level]))
+                        else:
+                            hs[level],cs[level] = self.f_lstms[m][level](hs[level-1], (hs[level],cs[level]))
+                    
+                    # fstate = self.f_lstms[m](h,fstate)
+                    h1f.append(hs[-1])
 
                 # backward path
                 bh1 = torch.split(
                         F.dropout(h0, training=self.train),
                         self.bsize, dim=0)
 
-                bstate = self.make_initial_state_new(self.enc_hsize[m])
+                hs, cs = self.make_initial_state(self.enc_hsize[m])
+                 # extend initial hidden state and cell state for stacked LSTM
+                hs = torch.stack([hs] * len(self.b_lstms[m]))
+                cs = torch.stack([cs] * len(self.b_lstms[m])) 
                 h1b = []
                 for h in reversed(bh1):
-                    bstate = self.b_lstms[m](h, bstate)
-                    h1b.insert(0, bstate[0])
+                    for level in range(len(self.b_lstms[m])):
+                        if level == 0:
+                            hs[level], cs[level] = self.b_lstms[m][level](h, (hs[level], cs[level]))
+                        else:
+                            hs[level], cs[level] = self.b_lstms[m][level](hs[level-1], (hs[level], cs[level]))
+
+                    # bstate = self.b_lstms[m](h, bstate)
+                    h1b.insert(0, hs[-1])
 
                 # concatenation
                 h1[m] = torch.cat([torch.cat((f, b), 1)
