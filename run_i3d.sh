@@ -10,13 +10,13 @@ slurm_queue=clusterNew
 workdir=`pwd`
 
 # train|val|test sets including dialog text for each video
-train_set=data/train_set4DSTC7-AVSD.json
-valid_set=data/valid_set4DSTC7-AVSD.json
+train_set=/net/callisto/storage1/baiyuu/data/DSTC7-AVSD/text_data/train_set4DSTC7-AVSD.json
+valid_set=/net/callisto/storage1/baiyuu/data/DSTC7-AVSD/text_data/valid_set4DSTC7-AVSD.json
 #test_set=data/test_set4DSTC7-AVSD.json
-test_set=data/test_set.json
+test_set=/net/callisto/storage1/baiyuu/data/DSTC7-AVSD/text_data/test_set.json
 
 # directory to read feature files
-fea_dir=data/charades_features
+fea_dir=/net/callisto/storage1/baiyuu/data/DSTC7-AVSD/audio_visual_feature
 # feature file pattern
 fea_file="<FeaType>/<ImageID>.npy"
 # input feature types
