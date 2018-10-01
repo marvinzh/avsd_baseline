@@ -79,8 +79,8 @@ class MMSeq2SeqModel(nn.Module):
         if t is not None:
             tt = torch.cat(t, dim=0)
             loss = F.cross_entropy(dy, torch.tensor(tt, dtype=torch.long).cuda())
-            max_index = dy.max(dim=1)[1]
-            hit = (max_index == torch.tensor(tt, dtype=torch.long).cuda()).sum()
+            # max_index = dy.max(dim=1)[1]
+            # hit = (max_index == torch.tensor(tt, dtype=torch.long).cuda()).sum()
             return None, ds, loss
         else:  # if target is None, it only returns states
             return None, ds

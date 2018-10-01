@@ -27,6 +27,7 @@ from multimodal_encoder import MMEncoder
 from lstm_encoder import LSTMEncoder
 from hlstm_encoder import HLSTMEncoder
 from hlstm_decoder import HLSTMDecoder
+from translate_encoder import TransEncoder
 
 
 def fetch_batch(dh, data, index, result):
@@ -189,8 +190,9 @@ if __name__ =="__main__":
                           len(vocab), args.hist_out_size, args.embed_size,
                           args.hist_enc_hsize),
                 # input encoder
-                LSTMEncoder(args.in_enc_layers, len(vocab), args.in_enc_hsize,
-                          args.embed_size),
+                # LSTMEncoder(args.in_enc_layers, len(vocab), args.in_enc_hsize,
+                #           args.embed_size),
+                TransEncoder(4096, 128, vocab),
                 # decoder
                 HLSTMDecoder(args.dec_layers, len(vocab), len(vocab), args.embed_size,
                           args.mout_size + args.hist_out_size + args.in_enc_hsize,
@@ -205,15 +207,18 @@ if __name__ =="__main__":
                                                          max_length=args.max_length)
     logging.info('#train sample = %d' % train_samples)
     logging.info('#train batch = %d' % len(train_indices))
+
     # make batchset for validation
     logging.info('Making mini batches for validation data')
     valid_indices, valid_samples = dh.make_batch_indices(valid_data, args.batch_size,
                                                      max_length=args.max_length)
     logging.info('#validation sample = %d' % valid_samples)
     logging.info('#validation batch = %d' % len(valid_indices))
+    
     # copy model to gpu
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.to(device)
+    
     # save meta parameters
     path = args.model + '.conf'
     with open(path, 'wb') as f:

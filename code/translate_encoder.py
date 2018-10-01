@@ -36,7 +36,7 @@ class TransEncoder(nn.Module):
             int2word.setdefault(v, []).append(k); 
 
         for x in xs:
-            s=""
+            s= ""
             for item in x:
                 s = s + int2word[int(item)] + " "
 

@@ -23,8 +23,8 @@ class HLSTMEncoder(nn.Module):
         """
         super(HLSTMEncoder, self).__init__()
         self.embed = nn.Embedding(in_size, embed_size)
-        self.wlstm = nn.LSTM(embed_size,hidden_size,n_wlayers,dropout,batch_first=True)
-        self.slstm = nn.LSTM(hidden_size,out_size,n_slayers,dropout,batch_first=True)
+        self.wlstm = nn.LSTM(embed_size,hidden_size,n_wlayers, dropout, batch_first=True)
+        self.slstm = nn.LSTM(hidden_size,out_size,n_slayers, dropout, batch_first=True)
 
         self.independent = independent
 
