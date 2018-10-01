@@ -30,9 +30,22 @@ class MMSeq2SeqModel(nn.Module):
         self.response_decoder = response_decoder
 
     def loss(self, mx, hx, x, y, t):
+        '''Forward propagation and loss calculation
+        
+        Arguments:
+            mx {[type]} -- multi-model feature input
+            hx {[type]} -- history log input
+            x {[type]} -- question input
+            y {[type]} -- output sequence
+            t {[type]} -- trget sequence
+        
+        Returns:
+            [type] -- [description]
+        '''
+
         """ Forward propagation and loss calculation
             Args:
-                es (pair of ~chainer.Variable): encoder state
+                e (pair of ~chainer.Variable): encoder state
                 x (list of ~chainer.Variable): list of input sequences
                 y (list of ~chainer.Variable): list of output sequences
                 t (list of ~chainer.Variable): list of target sequences
@@ -43,12 +56,16 @@ class MMSeq2SeqModel(nn.Module):
                 loss (~chainer.Variable) : cross-entropy loss
         """
         # encode
+        
+        # state of question input 
         ei = self.input_encoder(None, x)
+        # state of multimodal encoder
         ems = self.mm_encoder(ei, mx)
+        # state of history encoder
         eh = self.history_encoder(None, hx)
         # concatenate encodings
         es = torch.cat((ei, ems, eh[-1]), dim=1)
-        
+         
         if hasattr(self.response_decoder, 'context_to_state') \
             and self.response_decoder.context_to_state==True:
             ds, dy = self.response_decoder(es, None, y)

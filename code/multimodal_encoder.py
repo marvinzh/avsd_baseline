@@ -186,6 +186,19 @@ class MMEncoder(nn.Module):
 
     # forward propagation routine
     def __call__(self, s, x, train=True):
+        '''multimodal encoder main
+        
+        Arguments:
+            s {[type]} -- [description]
+            x {[type]} -- [description]
+        
+        Keyword Arguments:
+            train {bool} -- [description] (default: {True})
+        
+        Returns:
+            [type] -- [description]
+        '''
+
         self.bsize = x[0][0].shape[0]
         
         h1 = self.encode(x)
