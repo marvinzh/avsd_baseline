@@ -16,7 +16,7 @@ class TransEncoder(nn.Module):
         self.linear = torch.nn.Linear(in_size, out_size)
         self.vocab = vocab
         self.stmodel = skipthoughts.load_model()
-        self.encoder = skipthoughts.Encoder(model)
+        self.encoder = skipthoughts.Encoder(self.stmodel)
 
 
     def __call__(self, s, xs, **kwargs):
