@@ -75,35 +75,42 @@ def load(fea_types, fea_path, dataset_file, vocabfile='', vocab={},
         for w in vocab_from_file:
             if w not in vocab:
                 vocab[w] = len(vocab)
+
     unk = vocab['<unk>']
     eos = vocab['<eos>']
     dialog_list = []
     vid_set = set()
     qa_id = 0
+    
     for dialog in dialog_data['dialogs']:
-	if include_caption:
-	    caption = [words2ids(dialog['caption'], vocab, eos=eos)]
-	else:
-	    caption = [np.array([eos], dtype=np.int32)]
+        if include_caption:
+            caption = [words2ids(dialog['caption'], vocab, eos=eos)]
+        else:
+            caption = [np.array([eos], dtype=np.int32)]
 
 	questions = [words2ids(d['question'], vocab) for d in dialog['dialog']]
 	answers = [words2ids(d['answer'], vocab) for d in dialog['dialog']]
 	qa_pair = [np.concatenate((q,a,[eos])).astype(np.int32) for q,a in zip(questions, answers)]
 
 	vid = dictmap[dialog['image_id']] if dictmap is not None else dialog['image_id']
-        vid_set.add(vid)
+    vid_set.add(vid)
 	for n in six.moves.range(len(questions)):
 	    history = copy.copy(caption)
 	    for m in six.moves.range(n):
-		history.append(qa_pair[m])
+            history.append(qa_pair[m])
+
 	    question = np.concatenate((questions[n], [eos])).astype(np.int32)
 	    answer_in = np.concatenate(([eos], answers[n])).astype(np.int32)
 	    answer_out = np.concatenate((answers[n], [eos])).astype(np.int32)
-            dialog_list.append((vid, qa_id, history, question, answer_in, answer_out))
-            qa_id += 1
+        dialog_list.append((vid, qa_id, history, question, answer_in, answer_out))
+        qa_id += 1
 
-    data = {'dialogs': dialog_list, 'vocab': vocab, 'features': [], 
-            'original': dialog_data}
+    data = {
+        'dialogs': dialog_list,
+        'vocab': vocab,
+        'features': [], 
+        'original': dialog_data
+        }
     for ftype in fea_types:
         basepath = fea_path.replace('<FeaType>', ftype)
         features = {}

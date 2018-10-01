@@ -137,7 +137,7 @@ class HLSTMDecoder(nn.Module):
         if s is not None:
             dy, (hy, cy) = self.lstm(xs, (s[0], s[1]))
         else:
-            dy, (hy, cy) = self.lstm( xs)
+            dy, (hy, cy) = self.lstm(xs)
 
         return hy, cy, dy
 

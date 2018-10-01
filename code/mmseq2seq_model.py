@@ -25,7 +25,9 @@ class MMSeq2SeqModel(nn.Module):
         """
         super(MMSeq2SeqModel, self).__init__()
         self.history_encoder = history_encoder
+        # multi-modal encoder
         self.mm_encoder = mm_encoder
+        # input question encoder 
         self.input_encoder = input_encoder
         self.response_decoder = response_decoder
 
@@ -57,13 +59,13 @@ class MMSeq2SeqModel(nn.Module):
         """
         # encode
         
-        # state of question input 
+        # state of question input, shape: (B, dim1)
         ei = self.input_encoder(None, x)
-        # state of multimodal encoder
+        # state of multimodal encoder, shape: (B, dim2)
         ems = self.mm_encoder(ei, mx)
-        # state of history encoder
+        # state of history encoder, shape: (?, B, dim3)
         eh = self.history_encoder(None, hx)
-        # concatenate encodings
+        # concatenate encodings, shape: (B, dim1+dim2+dim3)
         es = torch.cat((ei, ems, eh[-1]), dim=1)
          
         if hasattr(self.response_decoder, 'context_to_state') \

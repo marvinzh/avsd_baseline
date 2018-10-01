@@ -38,7 +38,7 @@ class LSTMEncoder(nn.Module):
             s  (~chainer.Variable or None): Initial (hidden & cell) states. If ``None``
                 is specified zero-vector is used.
             xs (list of ~chianer.Variable): List of input sequences.
-                Each element ``xs[i]`` is a :class:`chainer.Variable` holding
+                Each element ``xs[i]`` is a :class:`torch.tensor` holding
                 a sequence.
         Return:
             (hy,cy): a pair of hidden and cell states at the end of the sequence,
