@@ -93,11 +93,11 @@ def load(fea_types, fea_path, dataset_file, vocabfile='', vocab={},
 	qa_pair = [np.concatenate((q,a,[eos])).astype(np.int32) for q,a in zip(questions, answers)]
 
 	vid = dictmap[dialog['image_id']] if dictmap is not None else dialog['image_id']
-    vid_set.add(vid)
+        vid_set.add(vid)
 	for n in six.moves.range(len(questions)):
 	    history = copy.copy(caption)
 	    for m in six.moves.range(n):
-            history.append(qa_pair[m])
+                history.append(qa_pair[m])
 
 	    question = np.concatenate((questions[n], [eos])).astype(np.int32)
 	    answer_in = np.concatenate(([eos], answers[n])).astype(np.int32)
