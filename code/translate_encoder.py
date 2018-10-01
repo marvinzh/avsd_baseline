@@ -12,7 +12,7 @@ class TransEncoder(nn.Module):
         """Initialize encoder with structure parameters
         Args:
         """
-        super(LSTMEncoder, self).__init__()
+        super(TransEncoder, self).__init__()
         self.linear = torch.nn.Linear(in_size, out_size)
         self.vocab = vocab
         self.stmodel = skipthoughts.load_model()
