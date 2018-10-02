@@ -31,11 +31,14 @@ mout_size=256      # dim of final projection layer
 # input (question) encoder
 embed_size=100
 in_enc_layers=2
-in_enc_hsize=128
+in_enc_hsize=256
+# in_enc_hsize=128
+
 # hierarchical history encoder
 hist_enc_layers="2 1"  # numbers of word-level layers & QA-pair layers
 hist_enc_hsize=128     # dim of hidden layer
-hist_out_size=128      # dim of final projection layer
+# hist_out_size=128      # dim of final projection layer
+hist_out_size=256
 # response (answer) decoder
 dec_layers=2    # number of layers
 dec_psize=128   # dim of word-embedding layer

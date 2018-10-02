@@ -28,6 +28,7 @@ class MMSeq2SeqModel(nn.Module):
         self.mm_encoder = mm_encoder
         self.input_encoder = input_encoder
         self.response_decoder = response_decoder
+        self.linear = torch.nn.Linear(3*256, 256)
 
     def loss(self, mx, hx, x, y, t):
         '''Forward propagation and loss calculation
@@ -63,8 +64,16 @@ class MMSeq2SeqModel(nn.Module):
         ems = self.mm_encoder(ei, mx)
         # state of history encoder
         eh = self.history_encoder(None, hx)
+
+        v1 = ei+ems+eh[-1]
+        v2 = ei*ems*eh[-1]
+        pre_es = torch.cat((ei, ems, eh[-1]), dim=1)
+        v3 = self.linear(es)
+        es = torch.cat((v1, v2, v3), dim=1)
+        
+
         # concatenate encodings
-        es = torch.cat((ei, ems, eh[-1]), dim=1)
+        # es = torch.cat((ei, ems, eh[-1]), dim=1)
          
         if hasattr(self.response_decoder, 'context_to_state') \
             and self.response_decoder.context_to_state==True:
