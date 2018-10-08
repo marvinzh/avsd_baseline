@@ -75,7 +75,6 @@ def beam_search(model, s,sos=2, eos=2, unk=0, minlen=1, beamsize=5, maxlen=20, p
         argmin = 0
         for out, lp, st in hyplist:
             logp = model.response_decoder.predict(st)
-            print(type(logp),logp.shape)
             lp_vec = logp.cpu().data.numpy() + lp
             lp_vec = np.squeeze(lp_vec)
             if l >= minlen:
