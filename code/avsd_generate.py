@@ -50,7 +50,7 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
 
                 # pred_out, _ = model.generate(x, h, q, maxlen=maxlen, 
                 #                         beam=beam, penalty=penalty, nbest=nbest)
-                pred_out, _ = beam_search(model, maxlen=maxlen, beamsize=beam, penalty=penalty, nbest=nbest)
+                pred_out, _ = beam_search(model,es, maxlen=maxlen, beamsize=beam, penalty=penalty, nbest=nbest)
                 for n in six.moves.range(min(nbest, len(pred_out))):
                     pred = pred_out[n]
                     hypstr = ' '.join([vocablist[w] for w in pred[0]])
