@@ -46,8 +46,11 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
                 h = [[torch.from_numpy(h) for h in hb] for hb in h_batch]
                 q = [torch.from_numpy(q) for q in q_batch]
                 # generate sequences
-                pred_out, _ = model.generate(x, h, q, maxlen=maxlen, 
-                                        beam=beam, penalty=penalty, nbest=nbest)
+                es = model.generate(x, h, q)
+
+                # pred_out, _ = model.generate(x, h, q, maxlen=maxlen, 
+                #                         beam=beam, penalty=penalty, nbest=nbest)
+                pred_out, _ = beam_search(model, maxlen=maxlen, beamsize=beam, penalty=penalty, nbest=nbest)
                 for n in six.moves.range(min(nbest, len(pred_out))):
                     pred = pred_out[n]
                     hypstr = ' '.join([vocablist[w] for w in pred[0]])
@@ -59,6 +62,52 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
 
     return {'dialogs': result_dialogs}
 
+
+def beam_search(model, s,sos=2, eos=2, unk=0, minlen=1, beamsize=5, maxlen=20, penalty=2.0, nbest=1):
+    ds = model.response_decoder.initialize(None, es, torch.from_numpy(np.asarray([sos])).cuda())
+    hyplist = [
+        ([], 0., ds),
+        ]
+    best_state = None
+    comp_hyplist = []
+    for l in six.moves.range(maxlen):
+        new_hyplist = []
+        argmin = 0
+        for out, lp, st in hyplist:
+            logp = model.response_decoder.predict(st)
+            lp_vec = logp.cpu().data.numpy() + lp
+            lp_vec = np.squeeze(lp_vec)
+            if l >= minlen:
+                new_lp = lp_vec[eos] + penalty * (len(out) + 1)
+                new_st = model.response_decoder.update(st, torch.from_numpy(np.asarray([eos])).cuda())
+                comp_hyplist.append((out, new_lp))
+                if best_state is None or best_state[0] < new_lp:
+                    best_state = (new_lp, new_st)
+
+            for o in np.argsort(lp_vec)[::-1]:
+                if o == unk or o == eos:  # exclude <unk> and <eos>
+                    continue
+                new_lp = lp_vec[o]
+                if len(new_hyplist) == beamsize:
+                    if new_hyplist[argmin][1] < new_lp:
+                        new_st = model.response_decoder.update(st, torch.from_numpy(np.asarray([o])).cuda())
+                        new_hyplist[argmin] = (out + [o], new_lp, new_st)
+                        argmin = min(enumerate(new_hyplist), key=lambda h: h[1][1])[0]
+                    else:
+                        break
+                else:
+                    new_st = model.response_decoder.update(st, torch.from_numpy(np.asarray([o])).cuda())
+                    new_hyplist.append((out + [o], new_lp, new_st))
+                    if len(new_hyplist) == beamsize:
+                        argmin = min(enumerate(new_hyplist), key=lambda h: h[1][1])[0]
+
+        hyplist = new_hyplist
+    
+    if len(comp_hyplist) > 0:
+        maxhyps = sorted(comp_hyplist, key=lambda h: -h[1])[:nbest]
+        return maxhyps, best_state[1]
+    else:
+        return [([], 0)], None
 
 ##################################
 # main
