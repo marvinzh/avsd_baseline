@@ -22,10 +22,11 @@ import data_handler as dh
 
 
 # Evaluation routine
-def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, penalty=2.0, nbest=1):
+def generate_response(models, data, batch_indices, vocab, maxlen=20, beam=5, penalty=2.0, nbest=1):
     vocablist = sorted(vocab.keys(), key=lambda s:vocab[s])
     result_dialogs = []
-    model.eval()
+    for model in models:
+        model.eval()
     with torch.no_grad():
         qa_id = 0
         for dialog in data['original']['dialogs']:
@@ -46,11 +47,14 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
                 h = [[torch.from_numpy(h) for h in hb] for hb in h_batch]
                 q = [torch.from_numpy(q) for q in q_batch]
                 # generate sequences
-                es = model.generate(x, h, q)
+                encoder_states=[]
+                for model in models:
+                    es = model.generate(x, h, q)
+                    encoder_states.append(es)
 
                 # pred_out, _ = model.generate(x, h, q, maxlen=maxlen, 
                 #                         beam=beam, penalty=penalty, nbest=nbest)
-                pred_out, _ = beam_search(model,es,maxlen=maxlen, beamsize=beam, penalty=penalty, nbest=nbest)
+                pred_out, _ = beam_search(models,encoder_states,maxlen=maxlen, beamsize=beam, penalty=penalty, nbest=nbest)
                 for n in six.moves.range(min(nbest, len(pred_out))):
                     pred = pred_out[n]
                     hypstr = ' '.join([vocablist[w] for w in pred[0]])
@@ -63,26 +67,62 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
     return {'dialogs': result_dialogs}
 
 
-def beam_search(model, s,sos=2, eos=2, unk=0, minlen=1, beamsize=5, maxlen=20, penalty=2.0, nbest=1):
-    ds = model.response_decoder.initialize(None, s, torch.from_numpy(np.asarray([sos])).cuda())
+def beam_search(models, ss,sos=2, eos=2, unk=0, minlen=1, beamsize=5, maxlen=20, penalty=2.0, nbest=1):
+    '''beam search
+    
+    Arguments:
+        models {list of models} -- models for ensemble
+        ss {list of states} -- initial states for each model
+    
+    Keyword Arguments:
+        sos {int} -- [description] (default: {2})
+        eos {int} -- [description] (default: {2})
+        unk {int} -- [description] (default: {0})
+        minlen {int} -- [description] (default: {1})
+        beamsize {int} -- [description] (default: {5})
+        maxlen {int} -- [description] (default: {20})
+        penalty {float} -- [description] (default: {2.0})
+        nbest {int} -- [description] (default: {1})
+    
+    Returns:
+        [type] -- [description]
+    '''
+    num_models=len(models)
+    decoder_states=[]
+    for i, model in enumerate(models):
+        decoder_state = model.response_decoder.initialize(None, ss[i], torch.from_numpy(np.asarray([sos])).cuda())
+        decoder_states.append(decoder_state)
+    
     hyplist = [
-        ([], 0., ds),
+        ([], 0., decoder_states),
         ]
     best_state = None
     comp_hyplist = []
     for l in six.moves.range(maxlen):
         new_hyplist = []
         argmin = 0
-        for out, lp, st in hyplist:
-            logp = model.response_decoder.predict(st)
+        
+        for out, lp, states in hyplist:
+
+            logp = models[-1].response_decoder.predict(states[-1])
+            for i, model in enumerate(models[:-1]):
+                logp += model.response_decoder.predict(states[i])
+            logp = logp/num_models
+
             lp_vec = logp.cpu().data.numpy() + lp
             lp_vec = np.squeeze(lp_vec)
             if l >= minlen:
                 new_lp = lp_vec[eos] + penalty * (len(out) + 1)
-                new_st = model.response_decoder.update(st, torch.from_numpy(np.asarray([eos])).cuda())
+                new_states =[]
+                for i, model in enumerate(models):
+                    new_st = model.response_decoder.update(states[i],
+                                                        torch.from_numpy(np.asarray([eos])).cuda()
+                                                        )
+                    new_states.append(new_st)
+                
                 comp_hyplist.append((out, new_lp))
                 if best_state is None or best_state[0] < new_lp:
-                    best_state = (new_lp, new_st)
+                    best_state = (new_lp, new_states)
 
             for o in np.argsort(lp_vec)[::-1]:
                 if o == unk or o == eos:  # exclude <unk> and <eos>
@@ -90,14 +130,24 @@ def beam_search(model, s,sos=2, eos=2, unk=0, minlen=1, beamsize=5, maxlen=20, p
                 new_lp = lp_vec[o]
                 if len(new_hyplist) == beamsize:
                     if new_hyplist[argmin][1] < new_lp:
-                        new_st = model.response_decoder.update(st, torch.from_numpy(np.asarray([o])).cuda())
-                        new_hyplist[argmin] = (out + [o], new_lp, new_st)
+                        new_states=[]
+                        for i, model in enumerate(models):
+                            new_st = model.response_decoder.update(states[i],
+                                                              torch.from_numpy(np.asarray([o])).cuda())
+                            new_states.append(new_st)
+
+                        new_hyplist[argmin] = (out + [o], new_lp, new_states)
                         argmin = min(enumerate(new_hyplist), key=lambda h: h[1][1])[0]
                     else:
                         break
                 else:
-                    new_st = model.response_decoder.update(st, torch.from_numpy(np.asarray([o])).cuda())
-                    new_hyplist.append((out + [o], new_lp, new_st))
+                    new_states=[]
+                    for i, model in enumerate(models):
+                        new_st = model.response_decoder.update(st,
+                                                             torch.from_numpy(np.asarray([o])).cuda())
+                        new_states.append(new_st)
+
+                    new_hyplist.append((out + [o], new_lp, new_states))
                     if len(new_hyplist) == beamsize:
                         argmin = min(enumerate(new_hyplist), key=lambda h: h[1][1])[0]
 
@@ -146,14 +196,23 @@ if __name__ =="__main__":
         logging.basicConfig(level=logging.INFO,
             format='%(asctime)s %(levelname)s: %(message)s')
  
-    logging.info('Loading model params from ' + args.model)
+    args.model=[
+        "/net/callisto/storage1/baiyuu/avsd_system/exp/avsd_i3d_rgb-i3d_flow_Adam_ep512-512_eh0-0_dp128_dh128_att128_bs64_seed1/avsd_model_1",
+        "/net/callisto/storage1/baiyuu/avsd_system/exp/avsd_i3d_rgb-i3d_flow_Adam_ep512-512_eh0-0_dp128_dh128_att128_bs64_seed1/avsd_model_2",
+        "/net/callisto/storage1/baiyuu/avsd_system/exp/avsd_i3d_rgb-i3d_flow_Adam_ep512-512_eh0-0_dp128_dh128_att128_bs64_seed1/avsd_model_3",
+    ]
     path = args.model_conf
     with open(path, 'r') as f:
         vocab, train_args = pickle.load(f)
-    model = torch.load(args.model+'.pth.tar')
+    
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-
+    models=[]
+    for model_path in args.model:
+        logging.info('Loading model params from ' + model_path+'.pth.tar')
+        model = torch.load(model_path+'.pth.tar')
+        model.to(device)
+        models.append(model)
+        
     if train_args.dictmap != '':
         dictmap = json.load(open(train_args.dictmap, 'r'))
     else:
@@ -170,7 +229,7 @@ if __name__ =="__main__":
     # generate sentences
     logging.info('-----------------------generate--------------------------')
     start_time = time.time()
-    result = generate_response(model, test_data, test_indices, vocab, 
+    result = generate_response(models, test_data, test_indices, vocab, 
                                maxlen=args.maxlen, beam=args.beam, 
                                penalty=args.penalty, nbest=args.nbest)
     logging.info('----------------')
