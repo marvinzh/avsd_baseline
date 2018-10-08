@@ -143,7 +143,7 @@ def beam_search(models, ss,sos=2, eos=2, unk=0, minlen=1, beamsize=5, maxlen=20,
                 else:
                     new_states=[]
                     for i, model in enumerate(models):
-                        new_st = model.response_decoder.update(st,
+                        new_st = model.response_decoder.update(states[i],
                                                              torch.from_numpy(np.asarray([o])).cuda())
                         new_states.append(new_st)
 
