@@ -46,8 +46,11 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
                 h = [[torch.from_numpy(h) for h in hb] for hb in h_batch]
                 q = [torch.from_numpy(q) for q in q_batch]
                 # generate sequences
-                pred_out, _ = model.generate(x, h, q, maxlen=maxlen, 
-                                        beam=beam, penalty=penalty, nbest=nbest)
+                es = model.generate(x,h,q)
+                pred_out, _ = ranked_beam_search(model, es, maxlen=maxlen,
+                                                beamsize=beam, penalty=penalty, nbest=nbest)
+                # pred_out, _ = model.generate(x, h, q, maxlen=maxlen, 
+                                        # beam=beam, penalty=penalty, nbest=nbest)
                 for n in six.moves.range(min(nbest, len(pred_out))):
                     pred = pred_out[n]
                     hypstr = ' '.join([vocablist[w] for w in pred[0]])
@@ -59,6 +62,76 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
 
     return {'dialogs': result_dialogs}
 
+
+def ranked_beam_search(model, state, sos=2, eos=2, unk=0, minlen=1, beamsize=5, maxlen=20, penalty=2.0, nbest=1):
+    '''beam search
+    
+    Arguments:
+        models {list of models} -- models for ensemble
+        ss {list of states} -- initial states for each model
+    
+    Keyword Arguments:
+        sos {int} -- [description] (default: {2})
+        eos {int} -- [description] (default: {2})
+        unk {int} -- [description] (default: {0})
+        minlen {int} -- [description] (default: {1})
+        beamsize {int} -- [description] (default: {5})
+        maxlen {int} -- [description] (default: {20})
+        penalty {float} -- [description] (default: {2.0})
+        nbest {int} -- [description] (default: {1})
+    
+    Returns:
+        [type] -- [description]
+    '''
+    decoder_state = model.response_decoder.initialize(None, state, torch.from_numpy(np.asarray([sos])).cuda())
+    
+    hyplist = [
+        ([], 0., decoder_states),
+        ]
+    best_state = None
+    comp_hyplist = []
+    for l in six.moves.range(maxlen):
+        new_hyplist = []
+        argmin = 0
+        
+        for out, lp, states in hyplist:
+            logp = model.response_decoder.predict(state)
+
+            lp_vec = logp.cpu().data.numpy() + lp
+            lp_vec = np.squeeze(lp_vec)
+            if l >= minlen:
+                new_lp = lp_vec[eos] + penalty * (len(out) + 1)
+                new_st = model.response_decoder.update(states, torch.from_numpy(np.asarray([eos])).cuda())
+                comp_hyplist.append((out, new_lp))
+                if best_state is None or best_state[0] < new_lp:
+                    best_state = (new_lp, new_state)
+
+            for o in np.argsort(lp_vec)[::-1]:
+                if o == unk or o == eos:  # exclude <unk> and <eos>
+                    continue
+                new_lp = lp_vec[o]
+                if len(new_hyplist) == beamsize:
+                    if new_hyplist[argmin][1] < new_lp:
+                        new_st = model.response_decoder.update(states, torch.from_numpy(np.asarray([o])).cuda())
+                        new_hyplist[argmin] = (out + [o], new_lp, new_st)
+                        argmin = min(enumerate(new_hyplist), key=lambda h: h[1][1])[0]
+                    else:
+                        break
+                else:
+                    new_st = model.response_decoder.update(states,
+                                                            torch.from_numpy(np.asarray([o])).cuda())
+
+                    new_hyplist.append((out + [o], new_lp, new_st))
+                    if len(new_hyplist) == beamsize:
+                        argmin = min(enumerate(new_hyplist), key=lambda h: h[1][1])[0]
+
+        hyplist = new_hyplist
+    
+    if len(comp_hyplist) > 0:
+        maxhyps = sorted(comp_hyplist, key=lambda h: -h[1])[:nbest]
+        return maxhyps, best_state[1]
+    else:
+        return [([], 0)], None
 
 ##################################
 # main
@@ -114,7 +187,8 @@ if __name__ =="__main__":
     # prepare test data
     logging.info('Loading test data from ' + args.test_set)
     test_data = dh.load(train_args.fea_type, args.test_path, args.test_set,
-                        vocab=vocab, dictmap=dictmap, include_caption=train_args.include_caption)
+                        vocab=vocab, dictmap=dictmap, 
+                        include_caption=train_args.include_caption)
     test_indices, test_samples = dh.make_batch_indices(test_data, 1)
     logging.info('#test sample = %d' % test_samples)
     # generate sentences
@@ -128,4 +202,4 @@ if __name__ =="__main__":
     if args.output:
         logging.info('writing results to ' + args.output)
         json.dump(result, open(args.output, 'w'), indent=4)
-    logging.info('done') 
+    logging.info('done')
