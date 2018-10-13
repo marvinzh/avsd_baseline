@@ -151,7 +151,7 @@ if [ $stage -le 3 ]; then
         target=$(basename ${data_set%.*})
         result=${expdir}/result_${target}_b${beam}_p${penalty}.json
         test_log=${result%.*}.log
-        $test_cmd code/avsd_generate.py \
+        $test_cmd code/avsd_generate4decoding.py \
           --gpu $gpu_id \
           --test-path "$fea_dir/$fea_file" \
           --test-set $data_set \
