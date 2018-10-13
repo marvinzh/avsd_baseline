@@ -42,7 +42,7 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
             result_dialogs.append(pred_dialog)
             for t, qa in enumerate(dialog['dialog']):
                 key= "%s_%d" % (vid, t)
-                ans_set = hypos[key]
+                ans_set = hypos[key]["nlist"]
                 logging.info("%s: # of hypos in list: %d"%(key, len(ans_set)))
 
                 logging.info('%d %s_%d' % (qa_id, vid, t))
