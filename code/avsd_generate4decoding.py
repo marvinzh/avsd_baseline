@@ -27,7 +27,7 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
     PATH = "/net/callisto/storage1/baiyuu/avsd_system/data/structed_nbest.json"
     hypos = json.load(open(PATH))
     logging.info("lodding hypos file: %s"%PATH)
-    #  lambda for P(t|s) model
+    #  lambda for P(a|q) model
     lamb= 0.5 
 
     vocablist = sorted(vocab.keys(), key=lambda s:vocab[s])
@@ -103,7 +103,7 @@ def calc_logp(model, state, ans_set, lamb, vocab, sos=2, eos=2, unk=0,):
             a2q_logp += lp_vec[i]
             decoder_state = model.response_decoder.update(decoder_state, torch.from_numpy(np.asarray([i])).cuda())
         
-        final_logp = lamb * q2a_logp + (1-lamb) * a2q_logp
+        final_logp = lamb * q2a_logp + (1. - lamb) * a2q_logp
         anwsers.append(
             (ans, final_logp)
         )

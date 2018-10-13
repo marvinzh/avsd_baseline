@@ -90,46 +90,4 @@ class MMSeq2SeqModel(nn.Module):
         # concatenate encodings
         es = torch.cat((ei, ems, eh[-1]), dim=1)
 
-        # beam search
-        ds = self.response_decoder.initialize(None, es, torch.from_numpy(np.asarray([sos])).cuda())
-        hyplist = [([], 0., ds)]
-        best_state = None
-        comp_hyplist = []
-        for l in six.moves.range(maxlen):
-            new_hyplist = []
-            argmin = 0
-            for out, lp, st in hyplist:
-                logp = self.response_decoder.predict(st)
-                lp_vec = logp.cpu().data.numpy() + lp
-                lp_vec = np.squeeze(lp_vec)
-                if l >= minlen:
-                    new_lp = lp_vec[eos] + penalty * (len(out) + 1)
-                    new_st = self.response_decoder.update(st, torch.from_numpy(np.asarray([eos])).cuda())
-                    comp_hyplist.append((out, new_lp))
-                    if best_state is None or best_state[0] < new_lp:
-                        best_state = (new_lp, new_st)
-
-                for o in np.argsort(lp_vec)[::-1]:
-                    if o == unk or o == eos:  # exclude <unk> and <eos>
-                        continue
-                    new_lp = lp_vec[o]
-                    if len(new_hyplist) == beam:
-                        if new_hyplist[argmin][1] < new_lp:
-                            new_st = self.response_decoder.update(st, torch.from_numpy(np.asarray([o])).cuda())
-                            new_hyplist[argmin] = (out + [o], new_lp, new_st)
-                            argmin = min(enumerate(new_hyplist), key=lambda h: h[1][1])[0]
-                        else:
-                            break
-                    else:
-                        new_st = self.response_decoder.update(st, torch.from_numpy(np.asarray([o])).cuda())
-                        new_hyplist.append((out + [o], new_lp, new_st))
-                        if len(new_hyplist) == beam:
-                            argmin = min(enumerate(new_hyplist), key=lambda h: h[1][1])[0]
-
-            hyplist = new_hyplist
-
-        if len(comp_hyplist) > 0:
-            maxhyps = sorted(comp_hyplist, key=lambda h: -h[1])[:nbest]
-            return maxhyps, best_state[1]
-        else:
-            return [([], 0)], None
+      return es
