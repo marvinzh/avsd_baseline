@@ -109,9 +109,7 @@ class MMSeq2SeqModel(nn.Module):
         es = torch.cat((ei, ems, eh[-1]), dim=1)
 
         # beam search
-       def generate(self, mx, hx, x,
-    #  sos=2, eos=2, unk=0, minlen=1, maxlen=100, beam=5, penalty=1.0, nbest=1,
-     ):
+       def generate(self, mx, hx, x):
         """ Generate sequence using beam search
             Args:
                 es (pair of ~chainer.Variable(s)): encoder state

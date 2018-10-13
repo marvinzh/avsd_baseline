@@ -101,7 +101,7 @@ class HLSTMDecoder(nn.Module):
         """
         # LSTM decoder can be initialized in the same way as update()
         if len(x) > 1:
-            self.hx = F.vstack([x[j][-1] for j in six.moves.range(len(x[1]))])
+            self.hx = torch.nn.functional.vstack([x[j][-1] for j in six.moves.range(len(x[1]))])
         else:
             self.hx = x
         if hasattr(self, 'independent') and self.independent:
