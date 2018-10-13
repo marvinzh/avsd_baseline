@@ -23,6 +23,12 @@ import data_handler as dh
 
 # Evaluation routine
 def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, penalty=2.0, nbest=1):
+    # path for 20-hypos file
+    PATH = ""
+    hypos = json.load(open(PATH))
+    #  lambda for P(t|s) model
+    lamb= 0.5 
+
     vocablist = sorted(vocab.keys(), key=lambda s:vocab[s])
     result_dialogs = []
     model.eval()
@@ -34,6 +40,8 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
                            'dialog': copy.deepcopy(dialog['dialog'])}
             result_dialogs.append(pred_dialog)
             for t, qa in enumerate(dialog['dialog']):
+                ans_set = hypos["%s_%d" % (vid, t)]
+
                 logging.info('%d %s_%d' % (qa_id, vid, t))
                 logging.info('QS: ' + qa['question'])
                 logging.info('REF: ' + qa['answer'])
@@ -45,30 +53,70 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
                 x = [torch.from_numpy(x) for x in x_batch]
                 h = [[torch.from_numpy(h) for h in hb] for hb in h_batch]
                 q = [torch.from_numpy(q) for q in q_batch]
+
+                # ans = qa["answer"].split()
+                # ans = list(map(lambda x:vocab[x], ans))
+                
                 # generate sequences
-                es = model.generate(x,h,q)
-                pred_out, _ = ranked_beam_search(model, es, maxlen=maxlen,
-                                                beamsize=beam, penalty=penalty, nbest=nbest)
-                # pred_out, _ = model.generate(x, h, q, maxlen=maxlen, 
-                                        # beam=beam, penalty=penalty, nbest=nbest)
-                for n in six.moves.range(min(nbest, len(pred_out))):
-                    pred = pred_out[n]
-                    hypstr = ' '.join([vocablist[w] for w in pred[0]])
-                    logging.info('HYP[%d]: %s  ( %f )' % (n + 1, hypstr, pred[1]))
-                    if n==0:
-                        pred_dialog['dialog'][t]['answer'] = hypstr
+                es = model.generate(x, h, q)
+                final_ans = calc_logp(model, es, ans_set, lamb, vocab)
+                pred_dialog['dialog'][t]['answer'] = final_ans[-1][0]
+                for ans, logp in final_ans:
+                    print("Answer: %s, logp: %f"%(ans, logp))
+
                 logging.info('ElapsedTime: %f' % (time.time() - start_time))
                 logging.info('-----------------------')
 
     return {'dialogs': result_dialogs}
 
-
-def ranked_beam_search(model, state, sos=2, eos=2, unk=0, minlen=1, beamsize=5, maxlen=20, penalty=2.0, nbest=1):
-    '''beam search
+def calc_logp(model, state, ans_set, lamb, vocab, sos=2, eos=2, unk=0,):
+    '''calc log probability given hypothesis list
     
     Arguments:
-        models {list of models} -- models for ensemble
-        ss {list of states} -- initial states for each model
+        model {[type]} -- [description]
+        state {[type]} -- [description]
+        ans_set {[type]} -- [description]
+    
+    Keyword Arguments:
+        sos {int} -- [description] (default: {2})
+        eos {int} -- [description] (default: {2})
+        unk {int} -- [description] (default: {0})
+    
+    Returns:
+        [type] -- [description]
+    '''
+    anwsers=[]
+    for ans, q2a_logp in ans_set:
+        ans_idx = ans.split()
+        ans_idx = list(map(lambda x:vocab[x], ans_idx))
+        ans_idx = ans_idx + [eos]
+
+        decoder_state = model.response_decoder.initialize(None, state, torch.from_numpy(np.asarray([sos])).cuda())
+
+        a2q_logp = 0.
+        for i in ans_idx:
+            logp = model.response_decoder.predict(decoder_state)
+            lp_vec = logp.squeeze().cpu().data.numpy()
+            a2q_logp += lp_vec[i]
+            decoder_state = model.response_decoder.update(decoder_state, torch.from_numpy(np.asarray([i])).cuda())
+        
+        final_logp = lamb * q2a_logp + (1-lamb) * a2q_logp
+        anwsers.append(
+            (ans, final_logp)
+        )
+
+    anwsers = sorted(anwsers, key=lambda x:x[1])
+    return anwsers
+
+
+
+def ranked_beam_search(model, state, ans, sos=2, eos=2, unk=0, minlen=1, beamsize=5, maxlen=20, penalty=2.0, nbest=1):
+    '''beam search given answer
+    
+    Arguments:
+        model {[type]} -- [description]
+        state {[type]} -- [description]
+        ans {list of int} -- [description]
     
     Keyword Arguments:
         sos {int} -- [description] (default: {2})
@@ -83,7 +131,9 @@ def ranked_beam_search(model, state, sos=2, eos=2, unk=0, minlen=1, beamsize=5, 
     Returns:
         [type] -- [description]
     '''
-    decoder_state = model.response_decoder.initialize(None, state, torch.from_numpy(np.asarray([sos])).cuda())
+    decoder_state = model.response_decoder.initialize(None,
+                                                    state,
+                                                    torch.from_numpy(np.asarray([sos])).cuda())
     
     hyplist = [
         ([], 0., decoder_states),
@@ -131,7 +181,9 @@ def ranked_beam_search(model, state, sos=2, eos=2, unk=0, minlen=1, beamsize=5, 
         maxhyps = sorted(comp_hyplist, key=lambda h: -h[1])[:nbest]
         return maxhyps, best_state[1]
     else:
-        return [([], 0)], None
+        return [
+            ([], 0)
+            ], None
 
 ##################################
 # main
