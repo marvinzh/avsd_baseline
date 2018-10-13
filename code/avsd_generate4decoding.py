@@ -24,8 +24,9 @@ import data_handler as dh
 # Evaluation routine
 def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, penalty=2.0, nbest=1):
     # path for 20-hypos file
-    PATH = ""
+    PATH = "/net/callisto/storage1/baiyuu/avsd_system/data/structed_nbest.json"
     hypos = json.load(open(PATH))
+    logging.info("lodding hypos file: %s"%PATH)
     #  lambda for P(t|s) model
     lamb= 0.5 
 
@@ -62,7 +63,7 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
                 final_ans = calc_logp(model, es, ans_set, lamb, vocab)
                 pred_dialog['dialog'][t]['answer'] = final_ans[-1][0]
                 for ans, logp in final_ans:
-                    print("Answer: %s, logp: %f"%(ans, logp))
+                    logging.info("Answer: %s, logp: %f"%(ans, logp))
 
                 logging.info('ElapsedTime: %f' % (time.time() - start_time))
                 logging.info('-----------------------')
