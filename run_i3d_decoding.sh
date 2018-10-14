@@ -62,7 +62,7 @@ enc_psize_=`echo $enc_psize|sed "s/ /-/g"`
 enc_hsize_=`echo $enc_hsize|sed "s/ /-/g"`
 fea_type_=`echo $fea_type|sed "s/ /-/g"`
 
-expdir=exp/avsd_${fea_type_}_${optimizer}_ep${enc_psize_}_eh${enc_hsize_}_dp${dec_psize}_dh${dec_hsize}_att${att_size}_bs${batch_size}_seed${seed}
+expdir=exp/reserved__${fea_type_}_${optimizer}_ep${enc_psize_}_eh${enc_hsize_}_dp${dec_psize}_dh${dec_hsize}_att${att_size}_bs${batch_size}_seed${seed}
 
 # command settings
 if [ $use_slurm = true ]; then
