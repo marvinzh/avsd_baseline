@@ -71,7 +71,7 @@ def generate_response(model, data, batch_indices, vocab,eos=2, maxlen=20, beam=5
                     
                     # generate sequences
                     es = model.generate(x, h, a)
-                    a2q_logp = calc_logp(model, es, q, lamb, vocab)
+                    a2q_logp = calc_logp(model, es, q)
 
                     final_logp = lamb* q2a_logp + (1. - lamb) * a2q_logp
                     rst.append(
