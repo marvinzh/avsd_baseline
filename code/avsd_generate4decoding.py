@@ -24,7 +24,7 @@ import data_handler as dh
 # Evaluation routine
 def generate_response(model, data, batch_indices, vocab, lamb_scale, eos=2, maxlen=20, beam=5, penalty=2.0, nbest=1):
     # path for 20-hypos file
-    PATH = "/net/callisto/storage1/baiyuu/avsd_system/data/structed_nbest.json"
+    PATH ="/net/callisto/storage1/baiyuu/avsd_system/decoding2/avsd_system/data/structed_nbest.json"
     hypos = json.load(open(PATH))
     logging.info("lodding hypos file: %s"%PATH)
     #  lambda for P(a|q) model
