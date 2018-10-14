@@ -91,7 +91,7 @@ def generate_response(model, data, batch_indices, vocab,eos=2, maxlen=20, beam=5
 def calc_logp(model, state, q, sos=2, eos=2, unk=0,):
     assert len(q)==1
    
-    q = list(q[0].data.numpy().astype(np.int32))
+    q = q[0].data.numpy()
 
     decoder_state = model.response_decoder.initialize(None, state, torch.from_numpy(np.asarray([sos])).cuda())
     a2q_logp = 0.
