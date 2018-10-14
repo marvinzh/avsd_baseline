@@ -74,13 +74,13 @@ def generate_response(model, data, batch_indices, vocab,eos=2, maxlen=20, beam=5
                     a2q_logp = calc_logp(model, es, q)
 
                     final_logp = lamb* q2a_logp + (1. - lamb) * a2q_logp
-                    rst.append(
+                    rst_set.append(
                         (ans, final_logp)
                     )
 
                 rst_set = sorted(rst_set, key=lambda x:x[1])
                 pred_dialog['dialog'][t]['answer'] = rst_set[-1][0]
-                for ans, logp in rst:
+                for ans, logp in rst_set:
                     logging.info("Answer: %s, logp: %f"%(ans, logp))
 
                 logging.info('ElapsedTime: %f' % (time.time() - start_time))
