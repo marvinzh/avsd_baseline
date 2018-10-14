@@ -44,27 +44,43 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
                 key= "%s_%d" % (vid, t)
                 ans_set = hypos[key]["nlist"]
                 logging.info("%s: # of hypos in list: %d"%(key, len(ans_set)))
-
+                
                 logging.info('%d %s_%d' % (qa_id, vid, t))
                 logging.info('QS: ' + qa['question'])
                 logging.info('REF: ' + qa['answer'])
                 # prepare input data
                 start_time = time.time()
                 x_batch, h_batch, q_batch, a_batch_in, a_batch_out = \
-                    dh.make_batch(data, batch_indices[qa_id])
+                        dh.make_batch(data, batch_indices[qa_id])
                 qa_id += 1
+                # multi modal info.
                 x = [torch.from_numpy(x) for x in x_batch]
+                    # history info.
                 h = [[torch.from_numpy(h) for h in hb] for hb in h_batch]
+                    # question info.
                 q = [torch.from_numpy(q) for q in q_batch]
 
-                # ans = qa["answer"].split()
-                # ans = list(map(lambda x:vocab[x], ans))
-                
-                # generate sequences
-                es = model.generate(x, h, q)
-                final_ans = calc_logp(model, es, ans_set, lamb, vocab)
-                pred_dialog['dialog'][t]['answer'] = final_ans[-1][0]
-                for ans, logp in final_ans:
+                rst_set=[]
+                for ans, q2a_logp in ans_set:
+                    ans_idx = ans.split()
+                    ans_idx = list(map(lambda x:vocab[x], ans_idx))
+                    ans_idx = ans_idx + [eos]
+                    ans_idx = torch.tensor(ans_idx, dtype=torch.int32)
+
+                    a = [ans_idx]
+                    
+                    # generate sequences
+                    es = model.generate(x, h, a)
+                    a2q_logp = calc_logp(model, es, q, lamb, vocab)
+
+                    final_logp = lamb* q2a_logp + (1. - lamb) * a2q_logp
+                    rst.append(
+                        (ans, final_logp)
+                    )
+
+                rst_set = sorted(rst_set, key=lambda x:x[1])
+                pred_dialog['dialog'][t]['answer'] = rst_set[-1][0]
+                for ans, logp in rst:
                     logging.info("Answer: %s, logp: %f"%(ans, logp))
 
                 logging.info('ElapsedTime: %f' % (time.time() - start_time))
@@ -72,44 +88,43 @@ def generate_response(model, data, batch_indices, vocab, maxlen=20, beam=5, pena
 
     return {'dialogs': result_dialogs}
 
-def calc_logp(model, state, ans_set, lamb, vocab, sos=2, eos=2, unk=0,):
-    '''calc log probability given hypothesis list
-    
-    Arguments:
-        model {[type]} -- [description]
-        state {[type]} -- [description]
-        ans_set {[type]} -- [description]
-    
-    Keyword Arguments:
-        sos {int} -- [description] (default: {2})
-        eos {int} -- [description] (default: {2})
-        unk {int} -- [description] (default: {0})
-    
-    Returns:
-        [type] -- [description]
-    '''
-    anwsers=[]
-    for ans, q2a_logp in ans_set:
-        ans_idx = ans.split()
-        ans_idx = list(map(lambda x:vocab[x], ans_idx))
-        ans_idx = ans_idx + [eos]
+def calc_logp(model, state, q, sos=2, eos=2, unk=0,):
+    assert len(q)==1
+   
+    q = list(q[0].data.numpy())
 
-        decoder_state = model.response_decoder.initialize(None, state, torch.from_numpy(np.asarray([sos])).cuda())
+    decoder_state = model.response_decoder.initialize(None, state, torch.from_numpy(np.asarray([sos])).cuda())
+    a2q_logp = 0.
+    for i in q:
+        logp = model.response_decoder.predict(decoder_state)
+        lp_vec = logp.squeeze().cpu().data.numpy()
+        a2q_logp += lp_vec[i]
+        decoder_state = model.response_decoder.update(decoder_state, torch.from_numpy(np.asarray([i])).cuda())
+    
+    return a2q_logp
 
-        a2q_logp = 0.
-        for i in ans_idx:
-            logp = model.response_decoder.predict(decoder_state)
-            lp_vec = logp.squeeze().cpu().data.numpy()
-            a2q_logp += lp_vec[i]
-            decoder_state = model.response_decoder.update(decoder_state, torch.from_numpy(np.asarray([i])).cuda())
+    # anwsers=[]
+    # for ans, q2a_logp in ans_set:
+    #     ans_idx = ans.split()
+    #     ans_idx = list(map(lambda x:vocab[x], ans_idx))
+    #     ans_idx = ans_idx + [eos]
+
+    #     decoder_state = model.response_decoder.initialize(None, state, torch.from_numpy(np.asarray([sos])).cuda())
+
+    #     a2q_logp = 0.
+    #     for i in ans_idx:
+    #         logp = model.response_decoder.predict(decoder_state)
+    #         lp_vec = logp.squeeze().cpu().data.numpy()
+    #         a2q_logp += lp_vec[i]
+    #         decoder_state = model.response_decoder.update(decoder_state, torch.from_numpy(np.asarray([i])).cuda())
         
-        final_logp = lamb * q2a_logp + (1. - lamb) * a2q_logp
-        anwsers.append(
-            (ans, final_logp)
-        )
+    #     final_logp = lamb * q2a_logp + (1. - lamb) * a2q_logp
+    #     anwsers.append(
+    #         (ans, final_logp)
+    #     )
 
-    anwsers = sorted(anwsers, key=lambda x:x[1])
-    return anwsers
+    # anwsers = sorted(anwsers, key=lambda x:x[1])
+    # return anwsers
 
 
 

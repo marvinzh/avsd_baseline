@@ -89,5 +89,4 @@ class MMSeq2SeqModel(nn.Module):
         ems = self.mm_encoder(ei, mx)
         # concatenate encodings
         es = torch.cat((ei, ems, eh[-1]), dim=1)
-
-      return es
+        return es
