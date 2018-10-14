@@ -163,7 +163,7 @@ do
             --penalty $penalty \
             --nbest $nbest \
             --output $result \
-            --scale $i
+            --scale $i \
             |& tee $test_log
         done
     fi
