@@ -189,6 +189,7 @@ do
             awk '/^(Bleu_[1-4]|METEOR|ROUGE_L|CIDEr):/{print $0; if($1=="CIDEr:"){exit}}'\
                 $result_eval
             echo "---------------"
+            scp $result_eval 18M18857@login.t3.gsic.titech.ac.jp:logs/.
         done
     fi
 done
