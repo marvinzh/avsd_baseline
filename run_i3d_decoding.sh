@@ -176,7 +176,7 @@ do
         for data_set in $test_set; do
             echo start evaluation for $data_set
             target=$(basename ${data_set%.*})
-            result=${expdir}/result_${target}_b${beam}_p${penalty}.json
+            result=${expdir}/result_${target}_b${beam}_p${penalty}_s${i}..json
             reference=${result%.*}_ref.json
             hypothesis=${result%.*}_hyp.json
             result_eval=${result%.*}.eval
