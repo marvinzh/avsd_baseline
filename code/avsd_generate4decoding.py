@@ -92,6 +92,7 @@ def calc_logp(model, state, q, sos=2, eos=2, unk=0,):
     assert len(q)==1
    
     q = list(q[0].data.numpy())
+    logging.info(q)
 
     decoder_state = model.response_decoder.initialize(None, state, torch.from_numpy(np.asarray([sos])).cuda())
     a2q_logp = 0.
