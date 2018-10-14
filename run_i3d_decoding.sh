@@ -83,108 +83,112 @@ set -o pipefail
 #set -x
 
 # preparation
-if [ $stage -le 1 ]; then
-    echo -------------------------
-    echo stage 1: preparation 
-    echo -------------------------
-    echo setup ms-coco evaluation tool
-    if [ ! -d utils/coco-caption ]; then
-        git clone https://github.com/tylin/coco-caption utils/coco-caption
-        patch -p0 -u < utils/coco-caption.patch
-    else
-        echo Already exists.
-    fi
-    echo -------------------------
-    echo checking feature files in $fea_dir
-    for ftype in $fea_type; do
-        if [ ! -d $fea_dir/$ftype ]; then
-            echo cannot access: $fea_dir/$ftype
-            echo download and extract feature files into the directory
-            exit
-        fi
-        echo ${ftype}: `ls $fea_dir/$ftype | wc -l`
-    done
-fi
+# if [ $stage -le 1 ]; then
+#     echo -------------------------
+#     echo stage 1: preparation 
+#     echo -------------------------
+#     echo setup ms-coco evaluation tool
+#     if [ ! -d utils/coco-caption ]; then
+#         git clone https://github.com/tylin/coco-caption utils/coco-caption
+#         patch -p0 -u < utils/coco-caption.patch
+#     else
+#         echo Already exists.
+#     fi
+#     echo -------------------------
+#     echo checking feature files in $fea_dir
+#     for ftype in $fea_type; do
+#         if [ ! -d $fea_dir/$ftype ]; then
+#             echo cannot access: $fea_dir/$ftype
+#             echo download and extract feature files into the directory
+#             exit
+#         fi
+#         echo ${ftype}: `ls $fea_dir/$ftype | wc -l`
+#     done
+# fi
 
-# training phase
-mkdir -p $expdir
-if [ $stage -le 2 ]; then
-    echo -------------------------
-    echo stage 2: model training
-    echo -------------------------
-    $train_cmd code/avsd_train.py \
-      --gpu $gpu_id \
-      --optimizer $optimizer \
-      --fea-type $fea_type \
-      --train-path "$fea_dir/$fea_file" \
-      --train-set $train_set \
-      --valid-path "$fea_dir/$fea_file" \
-      --valid-set $valid_set \
-      --num-epochs $num_epochs \
-      --batch-size $batch_size \
-      --max-length $max_length \
-      --model $expdir/avsd_model \
-      --enc-psize $enc_psize \
-      --enc-hsize $enc_hsize \
-      --att-size $att_size \
-      --mout-size $mout_size \
-      --embed-size $embed_size \
-      --in-enc-layers $in_enc_layers \
-      --in-enc-hsize $in_enc_hsize \
-      --hist-enc-layers $hist_enc_layers \
-      --hist-enc-hsize $hist_enc_hsize \
-      --hist-out-size $hist_out_size \
-      --dec-layers $dec_layers \
-      --dec-psize $dec_psize \
-      --dec-hsize $dec_hsize \
-      --rand-seed $seed \
-      |& tee $expdir/train.log
-fi
+# # training phase
+# mkdir -p $expdir
+# if [ $stage -le 2 ]; then
+#     echo -------------------------
+#     echo stage 2: model training
+#     echo -------------------------
+#     $train_cmd code/avsd_train.py \
+#       --gpu $gpu_id \
+#       --optimizer $optimizer \
+#       --fea-type $fea_type \
+#       --train-path "$fea_dir/$fea_file" \
+#       --train-set $train_set \
+#       --valid-path "$fea_dir/$fea_file" \
+#       --valid-set $valid_set \
+#       --num-epochs $num_epochs \
+#       --batch-size $batch_size \
+#       --max-length $max_length \
+#       --model $expdir/avsd_model \
+#       --enc-psize $enc_psize \
+#       --enc-hsize $enc_hsize \
+#       --att-size $att_size \
+#       --mout-size $mout_size \
+#       --embed-size $embed_size \
+#       --in-enc-layers $in_enc_layers \
+#       --in-enc-hsize $in_enc_hsize \
+#       --hist-enc-layers $hist_enc_layers \
+#       --hist-enc-hsize $hist_enc_hsize \
+#       --hist-out-size $hist_out_size \
+#       --dec-layers $dec_layers \
+#       --dec-psize $dec_psize \
+#       --dec-hsize $dec_hsize \
+#       --rand-seed $seed \
+#       |& tee $expdir/train.log
+# fi
 
 # testing phase
-if [ $stage -le 3 ]; then
-    echo -----------------------------
-    echo stage 3: generate responses
-    echo -----------------------------
-    for data_set in $test_set; do
-        echo start response generation for $data_set
-        target=$(basename ${data_set%.*})
-        result=${expdir}/result_${target}_b${beam}_p${penalty}.json
-        test_log=${result%.*}.log
-        $test_cmd code/avsd_generate4decoding.py \
-          --gpu $gpu_id \
-          --test-path "$fea_dir/$fea_file" \
-          --test-set $data_set \
-          --model-conf $expdir/avsd_model.conf \
-          --model $expdir/avsd_model_${model_epoch} \
-          --beam $beam \
-          --penalty $penalty \
-          --nbest $nbest \
-          --output $result \
-         |& tee $test_log
-    done
-fi
+for ((i=0; i<50; i++))
+do
+    if [ $stage -le 3 ]; then
+        echo -----------------------------
+        echo stage 3: generate responses lambda scale: ${i}
+        echo -----------------------------
+        for data_set in $test_set; do
+            echo start response generation for $data_set
+            target=$(basename ${data_set%.*})
+            result=${expdir}/result_${target}_b${beam}_p${penalty}_s${i}.json
+            test_log=${result%.*}.log_$i
+            $test_cmd code/avsd_generate4decoding.py \
+            --gpu $gpu_id \
+            --test-path "$fea_dir/$fea_file" \
+            --test-set $data_set \
+            --model-conf $expdir/avsd_model.conf \
+            --model $expdir/avsd_model_${model_epoch} \
+            --beam $beam \
+            --penalty $penalty \
+            --nbest $nbest \
+            --output $result \
+            --scale $i
+            |& tee $test_log
+        done
+    fi
 
-# scoring only for validation set
-if [ $stage -le 4 ]; then
-    echo --------------------------
-    echo stage 4: score results
-    echo --------------------------
-    for data_set in $test_set; do
-        echo start evaluation for $data_set
-        target=$(basename ${data_set%.*})
-        result=${expdir}/result_${target}_b${beam}_p${penalty}.json
-        reference=${result%.*}_ref.json
-        hypothesis=${result%.*}_hyp.json
-        result_eval=${result%.*}.eval
-        echo Evaluating: $result
-        python utils/get_annotation.py -s data/stopwords.txt $data_set $reference
-        python utils/get_hypotheses.py -s data/stopwords.txt $result $hypothesis
-        python utils/evaluate.py $reference $hypothesis >& $result_eval
-        echo Wrote details in $result_eval
-        echo "--- summary ---"
-        awk '/^(Bleu_[1-4]|METEOR|ROUGE_L|CIDEr):/{print $0; if($1=="CIDEr:"){exit}}'\
-            $result_eval
-        echo "---------------"
-    done
-fi
+    # scoring only for validation set
+    if [ $stage -le 4 ]; then
+        echo --------------------------
+        echo stage 4: score results
+        echo --------------------------
+        for data_set in $test_set; do
+            echo start evaluation for $data_set
+            target=$(basename ${data_set%.*})
+            result=${expdir}/result_${target}_b${beam}_p${penalty}.json
+            reference=${result%.*}_ref.json
+            hypothesis=${result%.*}_hyp.json
+            result_eval=${result%.*}.eval
+            echo Evaluating: $result
+            python utils/get_annotation.py -s data/stopwords.txt $data_set $reference
+            python utils/get_hypotheses.py -s data/stopwords.txt $result $hypothesis
+            python utils/evaluate.py $reference $hypothesis >& $result_eval
+            echo Wrote details in $result_eval
+            echo "--- summary ---"
+            awk '/^(Bleu_[1-4]|METEOR|ROUGE_L|CIDEr):/{print $0; if($1=="CIDEr:"){exit}}'\
+                $result_eval
+            echo "---------------"
+        done
+    fi
+done

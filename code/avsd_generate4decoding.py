@@ -22,14 +22,16 @@ import data_handler as dh
 
 
 # Evaluation routine
-def generate_response(model, data, batch_indices, vocab,eos=2, maxlen=20, beam=5, penalty=2.0, nbest=1):
+def generate_response(model, data, batch_indices, vocab, lamb_scale, eos=2, maxlen=20, beam=5, penalty=2.0, nbest=1):
     # path for 20-hypos file
     PATH = "/net/callisto/storage1/baiyuu/avsd_system/data/structed_nbest.json"
     hypos = json.load(open(PATH))
     logging.info("lodding hypos file: %s"%PATH)
     #  lambda for P(a|q) model
-    lamb= 0.5 
-
+    STEP = 0.02
+    lamb = 1. - min(STEP*lamb_scale, 1.)
+    logging.info("lambda: %f"%lamb)
+    
     vocablist = sorted(vocab.keys(), key=lambda s:vocab[s])
     result_dialogs = []
     model.eval()
@@ -228,6 +230,7 @@ if __name__ =="__main__":
                         help='Number of n-best hypotheses')
     parser.add_argument('--output', '-o', default='', type=str,
                         help='Output generated responses in a json file')
+    parser.add_argument("--scale", type=int)
     parser.add_argument('--verbose', '-v', default=0, type=int,
                         help='verbose level')
 
@@ -264,7 +267,7 @@ if __name__ =="__main__":
     # generate sentences
     logging.info('-----------------------generate--------------------------')
     start_time = time.time()
-    result = generate_response(model, test_data, test_indices, vocab, 
+    result = generate_response(model, test_data, test_indices, vocab, args.scale,
                                maxlen=args.maxlen, beam=args.beam, 
                                penalty=args.penalty, nbest=args.nbest)
     logging.info('----------------')
