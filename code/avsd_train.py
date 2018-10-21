@@ -106,6 +106,8 @@ if __name__ =="__main__":
                         help='Number of attention layer units')
     parser.add_argument('--mout-size', default=100, type=int,
                         help='Number of output layer units')
+    parser.add_argument("--enc-layers",nargs="+", type=int,
+                        help="number of stacked layers in encoder")
     # input (question) encoder parameters
     parser.add_argument('--embed-size', default=200, type=int, 
                         help='Word embedding size')
@@ -183,7 +185,7 @@ if __name__ =="__main__":
                 # multi-modality encoder
                 MMEncoder(feature_dims, args.mout_size, enc_psize=args.enc_psize,
                           enc_hsize=args.enc_hsize, att_size=args.att_size,
-                          state_size=args.in_enc_hsize),
+                          state_size=args.in_enc_hsize,enc_layers=args.enc_layers),
                 # history encoder 
                 HLSTMEncoder(args.hist_enc_layers[0], args.hist_enc_layers[1],
                           len(vocab), args.hist_out_size, args.embed_size,
