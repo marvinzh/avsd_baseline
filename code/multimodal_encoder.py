@@ -202,10 +202,13 @@ class MMEncoder(nn.Module):
     
     def att_modality_fusion(self, c, beta):
         assert beta.shape[1] == self.n_inputs
+        attended = [None] * self.n_inputs
 
+        beta = torch.permute(1,0)
         g = 0.
         for m in range(self.n_inputs):
-            g += self.lgd(beta[:,m].view(-1,1) * c[m])
+            attended[m] = beta[m].view(-1,1) * c[m]
+            g += self.lgd(attended[m])
         return g
 
 
