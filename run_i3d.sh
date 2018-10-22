@@ -26,6 +26,7 @@ fea_type="i3d_rgb i3d_flow"
 # multimodal encoder
 enc_psize="512 512"  # dims of projection layers for input features
 enc_hsize="0 0"    # dims of cell states (0: no LSTM layer)
+enc_layers="1 1"
 att_size=128       # dim to decide temporal attention
 mout_size=256      # dim of final projection layer
 # input (question) encoder
@@ -126,6 +127,7 @@ if [ $stage -le 2 ]; then
       --model $expdir/avsd_model \
       --enc-psize $enc_psize \
       --enc-hsize $enc_hsize \
+      --enc-layers $enc_layers \
       --att-size $att_size \
       --mout-size $mout_size \
       --embed-size $embed_size \
