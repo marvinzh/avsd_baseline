@@ -191,7 +191,7 @@ class MMEncoder(nn.Module):
     def mm_attention(self, g_q, c):
         v_pre= self.qest_att(g_q)
         for i in range(self.n_inputs):
-            v_pre = v_pre+ self.mm_att_w[i](c[i])
+            v_pre = v_pre+ self.mm_atts[i](c[i])
         
         v = self.mm_att_w(torch.tanh(v_pre))
         v = v.squeeze()
