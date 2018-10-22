@@ -201,7 +201,7 @@ class MMEncoder(nn.Module):
         return beta
     
     def att_modality_fusion(self, c, beta):
-        assert len(beta) == self.n_inputs
+        assert beta.shape[1] == self.n_inputs
 
         g = 0.
         for m in range(self.n_inputs):
