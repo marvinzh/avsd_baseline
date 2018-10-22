@@ -208,10 +208,8 @@ class MMEncoder(nn.Module):
         g = 0.
         for m in range(self.n_inputs):
             attended[m] = beta[m].view(-1,1) * c[m]
-            g += self.lgd(attended[m])
+            g += self.lgd[m](attended[m])
         return g
-
-
 
     # Simple modality fusion
     def simple_modality_fusion(self, c, s):
