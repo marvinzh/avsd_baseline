@@ -72,7 +72,8 @@ class MMEncoder(nn.Module):
         self.qest_att = nn.Linear(128, self.mm_att_size)
         self.mm_att_w = nn.Linear(self.mm_att_size, self.n_inputs, bias=False)
         for m in six.moves.range(len(in_size)):
-            self.mm_atts.append(nn.Linear(in_size[m], self.mm_att_size))
+            enc_hsize_ = 2 * enc_hsize[m] if enc_hsize[m] > 0 else enc_psize[m]
+            self.mm_atts.append(nn.Linear(enc_hsize_, self.mm_att_size))
     
         
 
@@ -191,7 +192,7 @@ class MMEncoder(nn.Module):
     def mm_attention(self, g_q, c):
         v_pre= self.qest_att(g_q)
         for i in range(self.n_inputs):
-            v_pre = v_pre+ self.mm_atts[i](c[i])
+            v_pre = v_pre + self.mm_atts[i](c[i])
         
         v = self.mm_att_w(torch.tanh(v_pre))
         v = v.squeeze()
