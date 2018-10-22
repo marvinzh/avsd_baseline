@@ -14,7 +14,7 @@ import torch.nn.functional as F
 class MMEncoder(nn.Module):
 
     def __init__(self, in_size, out_size, enc_psize=[], enc_hsize=[], att_size=100,
-                 state_size=100, device="cuda:0", enc_layers=[2,2], mm_att_size=128):
+                 state_size=100, device="cuda:0", enc_layers=[2,2], mm_att_size=100):
         if len(enc_psize)==0:
             enc_psize = in_size
         if len(enc_hsize)==0:
