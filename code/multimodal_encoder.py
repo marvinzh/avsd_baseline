@@ -14,7 +14,7 @@ import torch.nn.functional as F
 class MMEncoder(nn.Module):
 
     def __init__(self, in_size, out_size, enc_psize=[], enc_hsize=[], att_size=100,
-                 state_size=100, device="cuda:0", enc_layers=[2,2]):
+                 state_size=100, device="cuda:0", enc_layers=[2,2], mm_att_size=128):
         if len(enc_psize)==0:
             enc_psize = in_size
         if len(enc_hsize)==0:
@@ -31,6 +31,7 @@ class MMEncoder(nn.Module):
         self.enc_layers = enc_layers
         self.att_size = att_size
         self.state_size = state_size
+        self.mm_att_size = mm_att_size
         # encoder
         self.f_lstms = nn.ModuleList()
         self.b_lstms = nn.ModuleList()
@@ -64,6 +65,16 @@ class MMEncoder(nn.Module):
             self.atW.append(nn.Linear(state_size, att_size))
             self.atw.append(nn.Linear(att_size, 1))
             self.lgd.append(nn.Linear(enc_hsize_, out_size))
+
+
+        # multimodal attention
+        self.mm_atts = nn.ModuleList()
+        self.qest_att = nn.Linear(128, self.mm_att_size)
+        self.mm_att_w = nn.Linear(self.mm_att_size, self.n_inputs, bias=False)
+        for m in six.moves.range(len(in_size)):
+            self.mm_atts.append(nn.Linear(in_size[m], self.mm_att_size))
+    
+        
 
     # Make an initial state
     def make_initial_state(self, hiddensize):
@@ -177,8 +188,29 @@ class MMEncoder(nn.Module):
             c[m] = c_m.mean(0)
         return c
 
+    def mm_attention(self, g_q, c):
+        v_pre= self.qest_att(g_q)
+        for i in range(self.n_inputs):
+            v_pre = v_pre+ self.mm_att_w[i](c[i])
+        
+        v = self.mm_att_w(torch.tanh(v_pre))
+        v = v.squeeze()
+        beta = torch.softmax(v, dim=0)
+        return beta
+    
+    def att_modality_fusion(self, c, beta):
+        assert len(beta) == self.n_inputs
+
+        g = 0.
+        for m in range(self.n_inputs):
+            g += self.lgd(beta[m]* c[m])
+        return g
+
+
+
     # Simple modality fusion
     def simple_modality_fusion(self, c, s):
+
         g = 0.
         for m in six.moves.range(self.n_inputs):
             g += self.lgd[m](F.dropout(c[m]))
@@ -189,8 +221,8 @@ class MMEncoder(nn.Module):
         '''multimodal encoder main
         
         Arguments:
-            s {[type]} -- [description]
-            x {[type]} -- [description]
+            s {[type]} -- question encoding
+            x {[type]} -- raw multi-modal feature
         
         Keyword Arguments:
             train {bool} -- [description] (default: {True})
@@ -206,7 +238,10 @@ class MMEncoder(nn.Module):
 
         # attention
         c = self.attention(h1, vh1, s)
-        g = self.simple_modality_fusion(c, s)
+
+        beta = self.mm_attention(s, c)
+        g = self.att_modality_fusion(c, beta)
+        # g = self.simple_modality_fusion(c, s)
         
         return torch.tanh(g)
 
