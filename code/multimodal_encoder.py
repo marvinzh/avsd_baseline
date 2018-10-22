@@ -204,7 +204,7 @@ class MMEncoder(nn.Module):
         assert beta.shape[1] == self.n_inputs
         attended = [None] * self.n_inputs
 
-        beta = torch.permute(1,0)
+        beta = beta.permute(1,0)
         g = 0.
         for m in range(self.n_inputs):
             attended[m] = beta[m].view(-1,1) * c[m]
