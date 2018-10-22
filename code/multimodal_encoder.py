@@ -195,8 +195,9 @@ class MMEncoder(nn.Module):
             v_pre = v_pre + self.mm_atts[i](c[i])
         
         v = self.mm_att_w(torch.tanh(v_pre))
-        v = v.squeeze()
-        beta = torch.softmax(v, dim=0)
+        beta = torch.softmax(v, dim=1)
+
+        # (batchsize, #modality)
         return beta
     
     def att_modality_fusion(self, c, beta):
@@ -204,7 +205,7 @@ class MMEncoder(nn.Module):
 
         g = 0.
         for m in range(self.n_inputs):
-            g += self.lgd(beta[m]* c[m])
+            g += self.lgd(beta[:,m].view(-1,1) * c[m])
         return g
 
 
