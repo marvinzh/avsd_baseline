@@ -70,7 +70,7 @@ class MMEncoder(nn.Module):
         # multimodal attention
         self.mm_atts = nn.ModuleList()
         self.qest_att = nn.Linear(128, self.mm_att_size)
-        self.mm_att_w = nn.Linear(self.mm_att_size, self.n_inputs, bias=False)
+        self.mm_att_w = nn.Linear(self.mm_att_size, 1, bias=False)
         for m in six.moves.range(len(in_size)):
             enc_hsize_ = 2 * enc_hsize[m] if enc_hsize[m] > 0 else enc_psize[m]
             self.mm_atts.append(nn.Linear(enc_hsize_, self.mm_att_size))
@@ -190,12 +190,21 @@ class MMEncoder(nn.Module):
         return c
 
     def mm_attention(self, g_q, c):
-        v_pre= self.qest_att(g_q)
+        wg= self.qest_att(g_q)
+        vs=[]
         for i in range(self.n_inputs):
-            v_pre = v_pre + self.mm_atts[i](c[i])
+             vs.append(
+                 self.mm_atts[i](c[i]) + wg
+                 )
+
+        # each elems in vs (B, atten_size)
+        for i in range(sekf.n_inputs):
+            vs[i] = self.mm_att_w(torch.tanh(vs[i]))
         
-        v = self.mm_att_w(torch.tanh(v_pre))
-        beta = torch.softmax(v, dim=1)
+        # each elems in vs (B, 1)
+        vs = torch.cat(vs,dim=1)
+        #  (B, # of modality)
+        beta = torch.softmax(vs, dim=1)
 
         # (batchsize, #modality)
         return beta
@@ -205,6 +214,7 @@ class MMEncoder(nn.Module):
         attended = [None] * self.n_inputs
 
         beta = beta.permute(1,0)
+        # beta: (# of modality, B)
         g = 0.
         for m in range(self.n_inputs):
             attended[m] = beta[m].view(-1,1) * c[m]
