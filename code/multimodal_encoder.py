@@ -198,7 +198,7 @@ class MMEncoder(nn.Module):
                  )
 
         # each elems in vs (B, atten_size)
-        for i in range(sekf.n_inputs):
+        for i in range(self.n_inputs):
             vs[i] = self.mm_att_w(torch.tanh(vs[i]))
         
         # each elems in vs (B, 1)
