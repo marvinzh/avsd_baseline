@@ -203,6 +203,7 @@ class MMEncoder(nn.Module):
         
         # each elems in vs (B, 1)
         vs = torch.cat(vs,dim=1)
+        
         #  (B, # of modality)
         beta = torch.softmax(vs, dim=1)
 
@@ -214,10 +215,10 @@ class MMEncoder(nn.Module):
         attended = [None] * self.n_inputs
 
         beta = beta.permute(1,0)
-        # beta: (# of modality, B)
+        # beta: (# of modxality, B)
         g = 0.
         for m in range(self.n_inputs):
-            attended[m] = beta[m].view(-1,1) * c[m]
+            attended[m] = beta[m].view(-1,1) * F.dropout(c[m])
             g += self.lgd[m](attended[m])
         return g
 
