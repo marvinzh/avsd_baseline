@@ -229,20 +229,29 @@ class MMEncoder(nn.Module):
         e = e.view(nsize, bsize)    
         beta = F.softmax(e, dim=0)   
 
-        beta = beta.permute(1,0)
+        # beta = beta.permute(1,0)
         # (batchsize, #modality)
         return beta
     
     def att_modality_fusion(self, c, beta):
-        assert beta.shape[1] == self.n_inputs
+        # assert beta.shape[1] == self.n_inputs
 
-        beta = beta.permute(1,0)
+        # beta = beta.permute(1,0)
         # beta: (# of modality, B)
 
-        g = 0.
-        for m in range(self.n_inputs):
-            g += beta[m].view(-1,1) * self.lgd[m](F.dropout(c[m]))
-        return g
+        # g = 0.
+        # for m in range(self.n_inputs):
+            # g += beta[m].view(-1,1) * self.lgd[m](F.dropout(c[m]))
+        # return g
+        d_n = [self.lgd[m](F.dropout(c[m])) for m in six.moves.range(self.n_inputs)]
+        
+        d_n = torch.cat(d_n).view(nsize, bsize, out_size) 
+        d_n = d_n.permute(2, 0, 1)                  #(out_size, nsize, bsize)
+        
+        g_n = d_n * beta.expand_as(d_n)
+        g_n = g_n.permute(1, 2, 0)                  #(nsize, bsize, out_size)
+        g_n = g_n.sum(0)
+        return g_n
 
     # Simple modality fusion
     def simple_modality_fusion(self, c, s):
