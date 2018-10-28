@@ -227,8 +227,9 @@ class MMEncoder(nn.Module):
         e = self.mm_att_w(torch.tanh(e1))   
         
         e = e.view(nsize, bsize)    
-        e = F.softmax(e,dim=0)   
+        beta = F.softmax(e, dim=0)   
 
+        beta = beta.permute(1,0)
         # (batchsize, #modality)
         return beta
     
