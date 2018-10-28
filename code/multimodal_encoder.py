@@ -206,7 +206,7 @@ class MMEncoder(nn.Module):
         
         # #  (B, # of modality)
         # beta = torch.softmax(vs, dim=1)
-
+        
         nsize = self.n_inputs
         bsize = self.bsize
         asize = self.att_size
@@ -215,21 +215,20 @@ class MMEncoder(nn.Module):
 
         vc_n = []
         for m in six.moves.range(nsize):
-            vc_n.append(self.f_att_V[m](c[m]))
+            vc_n.append(self.mm_atts[m](c[m]))
             
-        ws = self.f_att_W(s)                       # ws=(bsize, asize)
+        ws = self.qest_att(g_q)                      # ws=(bsize, asize)
         vc_n = torch.cat(vc_n, dim=0)
         vc_n = vc_n.view(nsize, bsize, asize)
         
         e1 = vc_n + ws.expand_as(vc_n)             #(nsize,bsize,asize)
         e1 = e1.view(nsize * bsize, asize)
 
-        e = self.f_att_w(torch.tanh(e1))   
+        e = self.mm_att_w(torch.tanh(e1))   
         
         e = e.view(nsize, bsize)    
-        beta = F.softmax(e,dim=0)   
+        e = F.softmax(e,dim=0)   
 
-        beta = beta.permute(1,0)
         # (batchsize, #modality)
         return beta
     
