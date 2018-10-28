@@ -229,7 +229,7 @@ class MMEncoder(nn.Module):
         # e = e.view(nsize, bsize)    
         # beta = F.softmax(e, dim=0)   
 
-        # beta = beta.permute(1,0)
+        beta = beta.permute(1,0)
         # (batchsize, #modality)
         return beta
     
