@@ -243,6 +243,11 @@ class MMEncoder(nn.Module):
         # for m in range(self.n_inputs):
             # g += beta[m].view(-1,1) * self.lgd[m](F.dropout(c[m]))
         # return g
+        nsize = self.n_inputs
+        bsize = self.bsize
+        asize = self.att_size
+        out_size = self.out_size
+        
         d_n = [self.lgd[m](F.dropout(c[m])) for m in six.moves.range(self.n_inputs)]
         
         d_n = torch.cat(d_n).view(nsize, bsize, out_size) 
