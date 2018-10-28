@@ -212,14 +212,13 @@ class MMEncoder(nn.Module):
     
     def att_modality_fusion(self, c, beta):
         assert beta.shape[1] == self.n_inputs
-        attended = [None] * self.n_inputs
 
         beta = beta.permute(1,0)
-        # beta: (# of modxality, B)
+        # beta: (# of modality, B)
+
         g = 0.
         for m in range(self.n_inputs):
-            attended[m] = beta[m].view(-1,1) * F.dropout(c[m])
-            g += self.lgd[m](attended[m])
+            g += beta[m].view(-1,1) * self.lgd[m](F.dropout(c[m]))
         return g
 
     # Simple modality fusion
