@@ -214,7 +214,7 @@ class MMEncoder(nn.Module):
         assert beta.shape[1] == self.n_inputs
 
         beta = beta.permute(1,0)
-        beta: (# of modality, B)
+        # beta: (# of modality, B)
 
         g = 0.
         for m in range(self.n_inputs):
